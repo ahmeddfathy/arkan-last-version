@@ -1,3 +1,5 @@
+@extends('layouts.app')
+
 <head>
     <style>
         .card {
@@ -5,13 +7,8 @@
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/user.css') }}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet">
 </head>
-
+@section('content')
 <div class="container-fluid px-4">
     @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -231,21 +228,49 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
-<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-
-<script src="{{ asset('js/app.js' ) }}"></script>
-<link rel="preconnect" href="https://fonts.bunny.net">
-<link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
-
-<link rel="preconnect" href="https://fonts.bunny.net">
-<link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
-
 <script>
+    function removeRoles(userId) {
+        if (confirm('هل أنت متأكد من إزالة جميع الأدوار والصلاحيات؟')) {
+            $.ajax({
+                url: `/users/${userId}/remove-roles`,
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success(response.message);
+                        location.reload();
+                    }
+                },
+                error: function() {
+                    toastr.error('حدث خطأ أثناء إزالة الأدوار والصلاحيات');
+                }
+            });
+        }
+    }
+
+    function resetToEmployee(userId) {
+        if (confirm('هل أنت متأكد من إعادة تعيين المستخدم كموظف؟')) {
+            $.ajax({
+                url: `/users/${userId}/reset-to-employee`,
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success(response.message);
+                        location.reload();
+                    }
+                },
+                error: function() {
+                    toastr.error('حدث خطأ أثناء إعادة التعيين');
+                }
+            });
+        }
+    }
+
     function openRolesModal(userId, userName) {
         $('#userId').val(userId);
         $('#rolesModal').modal('show');
@@ -314,46 +339,4 @@
             }
         });
     }
-
-    function removeRoles(userId) {
-        if (confirm('هل أنت متأكد من إزالة جميع الأدوار والصلاحيات؟')) {
-            $.ajax({
-                url: `/users/${userId}/remove-roles`,
-                method: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    if (response.success) {
-                        toastr.success(response.message);
-                        location.reload();
-                    }
-                },
-                error: function() {
-                    toastr.error('حدث خطأ أثناء إزالة الأدوار والصلاحيات');
-                }
-            });
-        }
-    }
-
-    function resetToEmployee(userId) {
-        if (confirm('هل أنت متأكد من إعادة تعيين المستخدم كموظف؟')) {
-            $.ajax({
-                url: `/users/${userId}/reset-to-employee`,
-                method: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    if (response.success) {
-                        toastr.success(response.message);
-                        location.reload();
-                    }
-                },
-                error: function() {
-                    toastr.error('حدث خطأ أثناء إعادة التعيين');
-                }
-            });
-        }
-    }
-</script>
+</script>@endsection
