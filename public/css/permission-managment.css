@@ -1,0 +1,240 @@
+
+    .modal-content {
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #70C8E8, #5AB1D9);
+        border-radius: 1rem 1rem 0 0;
+        padding: 1.5rem;
+    }
+
+    .modal-header .modal-title {
+        color: white;
+        font-weight: 500;
+    }
+
+    .modal-header .btn-close {
+        color: white;
+        opacity: 1;
+    }
+
+    .form-label {
+        color: #333333;
+        font-weight: 500;
+    }
+
+    .form-control:focus {
+        border-color: #70C8E8;
+        box-shadow: 0 0 0 0.2rem rgba(112, 200, 232, 0.25);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #70C8E8, #5AB1D9);
+        border: none;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #5AB1D9, #4597BF);
+    }
+
+    .btn-light {
+        background: #F8FBFD;
+        border: 1px solid #E9EEF2;
+    }
+
+    .pagination .page-link {
+        color: #70C8E8;
+    }
+
+    .pagination .page-item.active .page-link {
+        background-color: #70C8E8;
+        border-color: #70C8E8;
+    }
+
+
+    /* Status badges with softer colors */
+    .badge.bg-pending {
+        background-color: #fff5e6 !important;
+        color: #ffa040 !important;
+    }
+
+    .badge.bg-approved {
+        background-color: #e8f5e9 !important;
+        color: #43a047 !important;
+    }
+
+    .badge.bg-rejected {
+        background-color: #ffebee !important;
+        color: #e53935 !important;
+    }
+
+    /* Softer highlight colors for hover states */
+
+
+    /* Header section with gradient */
+    .page-header {
+        background: linear-gradient(to right, #f8fbfd, #ffffff);
+        border-bottom: 1px solid #edf2f7;
+    }
+
+    /* Duration and Remaining columns with soft background */
+
+
+    /* Action buttons with softer colors */
+    .btn-respond {
+        background-color: #5b93a5;
+        border-color: #5b93a5;
+        color: white;
+    }
+
+    .btn-respond:hover {
+        background-color: #4a7d8c;
+        border-color: #4a7d8c;
+    }
+
+
+
+    /* Permission Requests header */
+    .permission-header {
+        background: linear-gradient(to right, #5b93a5, #6ba7b9);
+        color: white;
+        padding: 15px;
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    :root {
+        --primary-blue: #55B7E5;
+        --primary-dark: #333333;
+        --hover-blue: #4aa6d4;
+        --light-blue: #e6f4fa;
+        --border-color: #e5e7eb;
+    }
+
+    /* Container and Card Styling */
+    .container {
+        width: 100%;
+        max-width: 100%;
+        padding: 0 1rem;
+    }
+
+    .card {
+        border: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        width: 100%;
+        opacity: 1 !important;
+    }
+
+    .card:hover {
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+        background-color: var(--primary-blue) !important;
+        border-bottom: none;
+        padding: 1rem 1.5rem;
+    }
+
+    .card-body {
+        padding: 0; /* Remove padding from card body */
+    }
+
+    /* Table Container */
+    .table-responsive {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Table Styling */
+    .table {
+        width: 100% !important;
+        margin-bottom: 0;
+        border-collapse: collapse;
+    }
+
+    .table thead th {
+        background-color: var(--light-blue);
+        color: var(--primary-dark);
+        border-bottom: 2px solid var(--primary-blue);
+        padding: 1rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .table tbody tr {
+        transition: background-color 0.3s ease;
+    }
+
+    .table tbody tr:hover {
+        background-color: var(--light-blue);
+    }
+
+    .table td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    /* Make sure all table cells take appropriate space */
+    .table th, .table td {
+        min-width: max-content;
+    }
+
+    /* Column specific widths */
+    .table th:nth-child(1), .table td:nth-child(1) { /* Name column */
+        min-width: 150px;
+    }
+
+    .table th:nth-child(2), .table td:nth-child(2) { /* Date column */
+        min-width: 120px;
+    }
+
+    .table th:nth-child(3), .table td:nth-child(3),
+    .table th:nth-child(4), .table td:nth-child(4) { /* Time columns */
+        min-width: 100px;
+    }
+
+    .table th:nth-child(5), .table td:nth-child(5) { /* Reason column */
+        min-width: 200px;
+    }
+
+    .table th:nth-child(6), .table td:nth-child(6) { /* Status column */
+        min-width: 100px;
+    }
+
+    .table th:nth-child(7), .table td:nth-child(7) { /* Rejection Reason column */
+        min-width: 200px;
+    }
+
+    .table th:nth-child(8), .table td:nth-child(8) { /* Actions column */
+        min-width: 150px;
+        text-align: center;
+    }
+
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 0.5rem;
+        }
+
+        .card-header {
+            padding: 0.75rem 1rem;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table {
+            min-width: 1000px; /* Ensure minimum width for scrollable content */
+        }
+
+        .btn {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.875rem;
+        }
+    }

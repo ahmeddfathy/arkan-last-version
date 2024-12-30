@@ -1,0 +1,230 @@
+:root {
+    --primary-blue: #55B7E5;
+    --primary-dark: #333333;
+    --hover-blue: #4aa6d4;
+    --light-blue: #e6f4fa;
+    --border-color: #e5e7eb;
+}
+
+/* Container and Card Styling */
+.container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 1rem;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    width: 100%;
+    opacity: 1 !important;
+}
+
+.card:hover {
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: var(--primary-blue) !important;
+    border-bottom: none;
+    padding: 1rem 1.5rem;
+}
+
+.card-body {
+    padding: 0; /* Remove padding from card body */
+}
+
+/* Table Container */
+.table-responsive {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* Table Styling */
+.table {
+    width: 100% !important;
+    margin-bottom: 0;
+    border-collapse: collapse;
+}
+
+.table thead th {
+    background-color: var(--light-blue);
+    color: var(--primary-dark);
+    border-bottom: 2px solid var(--primary-blue);
+    padding: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.table tbody tr {
+    transition: background-color 0.3s ease;
+}
+
+.table tbody tr:hover {
+    background-color: var(--light-blue);
+}
+
+.table td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+/* Make sure all table cells take appropriate space */
+.table th, .table td {
+    min-width: max-content;
+}
+
+/* Column specific widths */
+.table th:nth-child(1), .table td:nth-child(1) { /* Name column */
+    min-width: 150px;
+}
+
+.table th:nth-child(2), .table td:nth-child(2) { /* Date column */
+    min-width: 120px;
+}
+
+.table th:nth-child(3), .table td:nth-child(3),
+.table th:nth-child(4), .table td:nth-child(4) { /* Time columns */
+    min-width: 100px;
+}
+
+.table th:nth-child(5), .table td:nth-child(5) { /* Reason column */
+    min-width: 200px;
+}
+
+.table th:nth-child(6), .table td:nth-child(6) { /* Status column */
+    min-width: 100px;
+}
+
+.table th:nth-child(7), .table td:nth-child(7) { /* Rejection Reason column */
+    min-width: 200px;
+}
+
+.table th:nth-child(8), .table td:nth-child(8) { /* Actions column */
+    min-width: 150px;
+    text-align: center;
+}
+
+/* Badge Styling */
+.badge {
+    padding: 0.5em 0.8em;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+.bg-success {
+    background-color: #34D399 !important;
+}
+
+.bg-danger {
+    background-color: #EF4444 !important;
+}
+
+.bg-warning {
+    background-color: #FBBF24 !important;
+}
+
+/* Button Styling */
+.btn {
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.btn-primary:hover {
+    background-color: var(--hover-blue);
+    border-color: var(--hover-blue);
+}
+
+.btn-light {
+    background-color: white;
+    border: 1px solid var(--border-color);
+}
+
+.btn-light:hover {
+    background-color: var(--light-blue);
+}
+
+/* Modal Styling */
+.modal-header {
+    background-color: var(--primary-blue);
+    color: white;
+    border-bottom: none;
+}
+
+.modal-header .btn-close {
+    color: white;
+    opacity: 1;
+}
+
+.modal-content {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Form Styling */
+.form-control, .form-select {
+    border: 1px solid var(--border-color);
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 0.2rem rgba(85, 183, 229, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+/* Alert Styling */
+.alert {
+    border: none;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+}
+
+.alert-danger {
+    background-color: #FEE2E2;
+    color: #991B1B;
+}
+
+.alert ul {
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 0 0.5rem;
+    }
+
+    .card-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table {
+        min-width: 1000px; /* Ensure minimum width for scrollable content */
+    }
+
+    .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.875rem;
+    }
+}

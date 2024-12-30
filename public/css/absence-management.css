@@ -1,0 +1,215 @@
+/* General Layout */
+.container {
+    max-width: 100% !important;
+    padding: 25px;
+}
+
+/* Card Styling */
+.card {
+    border: none;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.08);
+    border-radius: 15px;
+    margin-bottom: 25px;
+    background: #fff;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+    border-radius: 15px 15px 0 0 !important;
+    padding: 20px;
+    border: none;
+}
+
+.card-header h5 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Table Styling */
+.table-responsive {
+    padding: 20px;
+}
+
+.table {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+}
+
+.card{
+    opacity: 1 !important;
+}
+
+.table thead th {
+    background-color: #f8fafc;
+    border: none;
+    padding: 15px;
+    font-weight: 600;
+    color: #2d3748;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    border-radius: 8px;
+    background: #fff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.table tbody tr:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.table td {
+    padding: 15px;
+    vertical-align: middle;
+    border: none;
+    color: #4a5568;
+}
+
+/* Status Badges */
+.badge {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 0.75rem;
+    letter-spacing: 0.3px;
+}
+
+.bg-warning {
+    background-color: #ffd43b !important;
+    color: #744210;
+}
+
+.bg-success {
+    background-color: #48bb78 !important;
+    color: #fff;
+}
+
+.bg-danger {
+    background-color: #f56565 !important;
+    color: #fff;
+}
+
+/* Buttons */
+.btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2d62aa, #00b8e6);
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #f5365c, #f56036);
+    border: none;
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #11cdef, #1171ef);
+    border: none;
+    color: white;
+}
+
+/* Filter Section */
+.form-select,
+.form-control {
+    border-radius: 8px;
+    padding: 10px 15px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-select:focus,
+.form-control:focus {
+    border-color: #3a7bd5;
+    box-shadow: 0 0 0 2px rgba(58, 123, 213, 0.1);
+}
+
+.form-label {
+    font-weight: 500;
+    color: #2d3748;
+    margin-bottom: 8px;
+}
+
+/* Modal Styling */
+.modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+    border-radius: 15px 15px 0 0;
+    padding: 20px;
+}
+
+.modal-header .modal-title {
+    color: white;
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+/* Pagination */
+.pagination {
+    margin-top: 20px;
+    justify-content: center;
+}
+
+.page-link {
+    border-radius: 8px;
+    margin: 0 3px;
+    border: none;
+    color: #3a7bd5;
+    padding: 8px 16px;
+}
+
+.page-item.active .page-link {
+    background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+
+    .table thead th {
+        font-size: 0.75rem;
+        padding: 10px;
+    }
+
+    .table td {
+        padding: 10px;
+        font-size: 0.85rem;
+    }
+
+    .btn-sm {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+}
