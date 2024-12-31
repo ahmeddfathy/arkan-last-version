@@ -33,79 +33,133 @@ class AbsenceRequestController extends Controller
         $canRespondAsManager = $user->hasPermissionTo('manager_respond_absence_request');
         $canRespondAsHR = $user->hasPermissionTo('hr_respond_absence_request');
 
-        // تجهيز الطلبات حسب الدور
+        // جساب عدد أيام الغياب المعتمدة للمستخدم الحالي
+        $myAbsenceDays = AbsenceRequest::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereYear('absence_date', now()->year)
+            ->count();
+
+        // جلب طلبات المستخدم الحالي
+        $myRequests = AbsenceRequest::with('user')
+            ->where('user_id', $user->id)
+            ->latest()
+            ->get();
+
+        // متغير لطلبات فريق HR
+        $noTeamRequests = collect();
+        $noTeamAbsenceDaysCount = [];
+
+        // تجهيز طلبات الفريق للمدراء و HR
         if ($user->hasRole('hr')) {
-            $requests = AbsenceRequest::with('user')->latest();
+            // جلب طلبات الموظفين الذين ليسوا في أي فريق
+            $noTeamRequests = AbsenceRequest::query()
+                ->with('user')
+                ->whereHas('user', function ($query) {
+                    $query->whereDoesntHave('teams');
+                })
+                ->latest();
+
+            // طساب أيام الغياب للموظفين بدون فريق
+            $noTeamUserIds = $noTeamRequests->pluck('user_id')->unique();
+            $noTeamAbsenceDaysCount = [];
+            foreach ($noTeamUserIds as $userId) {
+                $noTeamAbsenceDaysCount[$userId] = AbsenceRequest::where('user_id', $userId)
+                    ->where('status', 'approved')
+                    ->whereYear('absence_date', now()->year)
+                    ->count();
+            }
+
+            // طلبات باقي الموظفين (الجدول الرئيسي)
+            $teamRequests = AbsenceRequest::with('user')
+                ->whereHas('user', function ($query) {
+                    $query->whereHas('teams')
+                        ->whereDoesntHave('teams', function ($q) {
+                            $q->whereRaw('team_user.role = ?', ['admin']);
+                        });
+                })
+                ->latest();
             $users = User::select('id', 'name')->get();
         } elseif ($user->hasRole(['team_leader', 'department_manager', 'company_manager'])) {
-            // نستخدم علاقات Jetstream للوصول للفريق
             $team = $user->currentTeam;
-
             if ($team) {
-                \Log::info('Current Team:', ['team_id' => $team->id, 'team_name' => $team->name]);
-
-                // نجلب أعضاء الفريق
                 $teamMembers = $team->users->pluck('id')->toArray();
-
-                \Log::info('Team Members:', ['members' => $teamMembers]);
-
-                // نجلب طلبات الغياب
-                $requests = AbsenceRequest::query()
+                $teamRequests = AbsenceRequest::query()
                     ->with('user')
                     ->whereIn('user_id', $teamMembers)
+                    ->whereHas('user', function ($query) use ($team) {
+                        $query->whereDoesntHave('teams', function ($q) use ($team) {
+                            $q->where('teams.id', $team->id)
+                                ->whereRaw('team_user.role = ?', ['admin']);
+                        });
+                    })
                     ->latest();
-
                 $users = User::whereIn('id', $teamMembers)->get();
-
-                \Log::info('Requests Query:', [
-                    'sql' => $requests->toSql(),
-                    'bindings' => $requests->getBindings(),
-                    'count' => $requests->count()
-                ]);
             } else {
-                // إذا لم يكن لديه فريق حالي
-                $requests = AbsenceRequest::query()->where('id', 0); // فريق فارغ
+                $teamRequests = AbsenceRequest::query()->where('id', 0);
                 $users = collect();
-                \Log::warning('No current team found for user:', ['user_id' => $user->id]);
             }
         } else {
-            $requests = AbsenceRequest::with('user')
-                ->where('user_id', $user->id)
-                ->latest();
+            $teamRequests = collect();
             $users = collect([$user]);
         }
 
-        // تطبيق الفلاتر
-        if ($employeeName) {
-            $requests->whereHas('user', function ($q) use ($employeeName) {
-                $q->where('name', 'like', "%{$employeeName}%");
-            });
-        }
-
-        if ($status) {
-            $requests->where('status', $status);
-        }
-
-        $requests = $requests->paginate(10);
-
-        // حساب عدد أيام الغياب المعتمدة لكل مستخدم
-        $absenceDays = collect();
-        foreach ($requests as $absenceRequest) {
-            if (!$absenceDays->has($absenceRequest->user_id)) {
-                $count = $this->absenceRequestService->calculateAbsenceDays($absenceRequest->user_id);
-                $absenceDays->put($absenceRequest->user_id, $count);
+        // حساب عدد أيام الغياب لكل مستخدم
+        $absenceDaysCount = [];
+        if ($teamRequests instanceof \Illuminate\Database\Eloquent\Builder) {
+            $userIds = $teamRequests->pluck('user_id')->unique();
+            foreach ($userIds as $userId) {
+                $absenceDaysCount[$userId] = AbsenceRequest::where('user_id', $userId)
+                    ->where('status', 'approved')
+                    ->whereYear('absence_date', now()->year)
+                    ->count();
             }
         }
 
+        // تطبيق الفلاتر على طلبات الفريق
+        if ($employeeName) {
+            $teamRequests->whereHas('user', function ($q) use ($employeeName) {
+                $q->where('name', 'like', "%{$employeeName}%");
+            });
+
+            // تطبيق الفلتر على طلبات الموظفين بدون فريق
+            if ($noTeamRequests instanceof \Illuminate\Database\Eloquent\Builder) {
+                $noTeamRequests->whereHas('user', function ($q) use ($employeeName) {
+                    $q->where('name', 'like', "%{$employeeName}%");
+                });
+            }
+        }
+
+        if ($status) {
+            $teamRequests->where('status', $status);
+
+            // تطبيق فلتر الحالة على طلبات الموظفين بدون فريق
+            if ($noTeamRequests instanceof \Illuminate\Database\Eloquent\Builder) {
+                $noTeamRequests->where('status', $status);
+            }
+        }
+
+        if ($teamRequests instanceof \Illuminate\Database\Eloquent\Builder) {
+            $teamRequests = $teamRequests->paginate(10);
+        }
+
+        // تطبيق الترقيم الصفحي على طلبات الموظفين بدون فريق بعد تطبيق الفلاتر
+        if ($noTeamRequests instanceof \Illuminate\Database\Eloquent\Builder) {
+            $noTeamRequests = $noTeamRequests->paginate(10);
+        }
+
         return view('absence-requests.index', compact(
-            'requests',
+            'myRequests',
+            'teamRequests',
+            'noTeamRequests',
             'users',
             'canCreateAbsence',
             'canUpdateAbsence',
             'canDeleteAbsence',
             'canRespondAsManager',
             'canRespondAsHR',
-            'absenceDays'
+            'myAbsenceDays',
+            'absenceDaysCount',
+            'noTeamAbsenceDaysCount'
         ));
     }
 
