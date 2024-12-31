@@ -15,12 +15,26 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->date('overtime_date');
-            $table->string('reason');
             $table->time('start_time');
             $table->time('end_time');
+            $table->text('reason');
+
+            // حالة المدير
+            $table->enum('manager_status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->text('manager_rejection_reason')->nullable();
+
+            // حالة HR
+            $table->enum('hr_status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->text('hr_rejection_reason')->nullable();
+
+            // الحالة النهائية
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->text('rejection_reason')->nullable();
+
             $table->timestamps();
+
+            // إضافة فهرس للبحث السريع
+            $table->index(['user_id', 'overtime_date']);
+            $table->index(['status', 'manager_status', 'hr_status']);
         });
     }
 

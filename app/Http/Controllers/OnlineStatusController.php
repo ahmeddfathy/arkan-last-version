@@ -4,27 +4,25 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 use Carbon\Carbon;
 
 class OnlineStatusController extends Controller
 {
-    public function updateStatus(Request $request)
-    {
-        $user = Auth::user();
-        $user->update([
-            'is_online' => $request->is_online,
-            'last_seen_at' => Carbon::now(),
-        ]);
+  public function updateStatus(Request $request)
+  {
+    $user = Auth::user();
+    $user->last_seen = Carbon::now();
+    $user->save();
 
-        return response()->json(['success' => true]);
-    }
+    return response()->json(['success' => true]);
+  }
 
-    public function getUserStatus($userId)
-    {
-        $user = User::findOrFail($userId);
-        return response()->json([
-            'is_online' => $user->is_online,
-            'last_seen_at' => $user->last_seen_at
-        ]);
-    }
+  public function getOnlineUsers()
+  {
+    $users = User::where('last_seen', '>=', Carbon::now()->subMinutes(5))
+      ->get(['id', 'name', 'last_seen']);
+
+    return response()->json($users);
+  }
 }

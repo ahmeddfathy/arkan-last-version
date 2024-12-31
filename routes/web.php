@@ -84,10 +84,7 @@ Route::middleware(['auth', 'role:manager'])->group(function () {
 
     Route::patch('/overtime-requests/{overTimeRequest}/respond', [OverTimeRequestsController::class, 'updateStatus'])
         ->name('overtime-requests.respond');
-    Route::patch('/overtime-requests/{overTimeRequest}/reset-status', [OverTimeRequestsController::class, 'resetStatus'])
-        ->name('overtime-requests.reset-status');
-    Route::patch('/overtime-requests/{overTimeRequest}/modify', [OverTimeRequestsController::class, 'modifyResponse'])
-        ->name('overtime-requests.modify');
+
     Route::patch('/overtime-requests/{id}', [OverTimeRequestsController::class, 'update']);
     Route::delete('/overtime-requests/{overtimeRequest}', [OverTimeRequestsController::class, 'destroy'])->name('overtime-requests.destroy');
 
@@ -179,3 +176,28 @@ Route::get('/users-without-role', [UserController::class, 'getEmployeesWithoutRo
     ->name('users.without-role');
 Route::post('/assign-employee-role', [UserController::class, 'assignEmployeeRole'])
     ->name('users.assign-employee-role');
+
+// Overtime Request Routes
+Route::middleware(['auth'])->group(function () {
+    // Basic CRUD routes
+    Route::get('/overtime-requests', [OverTimeRequestsController::class, 'index'])->name('overtime-requests.index');
+    Route::post('/overtime-requests', [OverTimeRequestsController::class, 'store'])->name('overtime-requests.store');
+    Route::post('/overtime-requests/{overTimeRequest}', [OverTimeRequestsController::class, 'update'])->name('overtime-requests.update');
+    Route::delete('/overtime-requests/{overTimeRequest}', [OverTimeRequestsController::class, 'destroy'])->name('overtime-requests.destroy');
+
+    // Manager Response Routes
+    Route::post('/overtime-requests/{overTimeRequest}/manager-status', [OverTimeRequestsController::class, 'updateManagerStatus'])
+        ->name('overtime-requests.manager-status');
+    Route::post('/overtime-requests/{overTimeRequest}/modify-manager-status', [OverTimeRequestsController::class, 'modifyManagerStatus'])
+        ->name('overtime-requests.modify-manager-status');
+    Route::post('/overtime-requests/{overTimeRequest}/reset-manager-status', [OverTimeRequestsController::class, 'resetManagerStatus'])
+        ->name('overtime-requests.reset-manager-status');
+
+    // HR Response Routes
+    Route::post('/overtime-requests/{overTimeRequest}/hr-status', [OverTimeRequestsController::class, 'updateHrStatus'])
+        ->name('overtime-requests.hr-status');
+    Route::post('/overtime-requests/{overTimeRequest}/modify-hr-status', [OverTimeRequestsController::class, 'modifyHrStatus'])
+        ->name('overtime-requests.modify-hr-status');
+    Route::post('/overtime-requests/{overTimeRequest}/reset-hr-status', [OverTimeRequestsController::class, 'resetHrStatus'])
+        ->name('overtime-requests.reset-hr-status');
+});

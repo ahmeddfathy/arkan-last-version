@@ -172,5 +172,29 @@ class RolesAndPermissionsSeeder extends Seeder
         User::all()->each(function ($user) use ($employeePermissions) {
             $user->givePermissionTo($employeePermissions);
         });
+
+        // إضافة الصلاحيات الجديدة
+        Permission::create(['name' => 'view_overtime']);
+        Permission::create(['name' => 'create_overtime']);
+        Permission::create(['name' => 'update_overtime']);
+        Permission::create(['name' => 'delete_overtime']);
+        Permission::create(['name' => 'hr_respond_overtime_request']);
+        Permission::create(['name' => 'manager_respond_overtime_request']);
+
+        // إسناد الصلاحيات للأدوار
+        $employeeRole->givePermissionTo([
+            'view_overtime',
+            'create_overtime',
+            'update_overtime',
+            'delete_overtime',
+        ]);
+
+        $teamLeaderRole->givePermissionTo([
+            'manager_respond_overtime_request',
+        ]);
+
+        $hrRole->givePermissionTo([
+            'hr_respond_overtime_request',
+        ]);
     }
 }

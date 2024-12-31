@@ -28,6 +28,7 @@ class AbsenceRequest extends Model
         return $this->belongsTo(User::class);
     }
 
+    // التحقق من إمكانية الرد على الطلب
     public function canRespond(User $user): bool
     {
         // HR يمكنه الرد على أي طلب
@@ -35,34 +36,21 @@ class AbsenceRequest extends Model
             return true;
         }
 
-        // التحقق مما إذا كان المستخدم صاحب الطلب موجود في أي فريق
-        $hasTeam = DB::table('team_user')
-            ->where('user_id', $this->user_id)
-            ->exists();
-
-        // إذا لم يكن المستخدم في أي فريق، فقط HR يمكنه الرد
-        if (!$hasTeam) {
-            return false;
-        }
-
         // التحقق من أن المستخدم لديه صلاحية الرد كمدير
         if (!$user->hasPermissionTo('manager_respond_absence_request')) {
             return false;
         }
 
-        // التحقق من أن المستخدم مدير وأيضاً admin أو owner في الفريق
+        // التحقق من أن المستخدم مدير (تيم ليدر/مدير قسم/مدير شركة) وأيضاً admin أو owner في الفريق
         if ($user->hasRole(['team_leader', 'department_manager', 'company_manager'])) {
-            $team = $user->currentTeam;
-
-            // التحقق من أن المستخدم لديه دور admin أو owner في الفريق
-            $isAdminOrOwner = DB::table('team_user')
-                ->join('users', 'users.id', '=', 'team_user.user_id')
-                ->where('team_user.team_id', $team->id)
-                ->where('team_user.user_id', $user->id)
-                ->whereIn('team_user.role', ['admin', 'owner'])
+            return DB::table('team_user')
+                ->where('user_id', $user->id)
+                ->where('team_id', $this->user->team_id)
+                ->where(function ($query) {
+                    $query->where('role', 'admin')
+                        ->orWhere('role', 'owner');
+                })
                 ->exists();
-
-            return $isAdminOrOwner;
         }
 
         return false;
@@ -139,17 +127,6 @@ class AbsenceRequest extends Model
     // تحديث الحالة النهائية
     public function updateFinalStatus(): void
     {
-        // التحقق مما إذا كان المستخدم موجود في أي فريق
-        $hasTeam = DB::table('team_user')
-            ->where('user_id', $this->user_id)
-            ->exists();
-
-        // إذا لم يكن المستخدم في أي فريق، نتحقق فقط من موافقة HR
-        if (!$hasTeam) {
-            $this->status = $this->hr_status;
-            return;
-        }
-
         // إذا كان أحد الردود مرفوض، الطلب مرفوض
         if ($this->manager_status === 'rejected' || $this->hr_status === 'rejected') {
             $this->status = 'rejected';
