@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AbsenceRequest;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Gate;
 
 class AbsenceRequestService
 {
@@ -115,6 +116,10 @@ class AbsenceRequestService
 
     public function updateStatus(AbsenceRequest $request, array $data)
     {
+        if (!$this->canRespond()) {
+            throw new \Illuminate\Auth\Access\AuthorizationException('You are not authorized to respond to absence requests.');
+        }
+
         $request->update([
             'status' => $data['status'],
             'rejection_reason' => $data['status'] == 'rejected' ? $data['rejection_reason'] : null
@@ -144,10 +149,19 @@ class AbsenceRequestService
         // Delete existing notifications before updating status
         $this->notificationService->deleteStatusNotifications($request);
 
-        $request->update([
-            'status' => $data['status'],
-            'rejection_reason' => $data['status'] === 'rejected' ? $data['rejection_reason'] : null
-        ]);
+        if ($data['response_type'] === 'manager') {
+            $request->manager_status = $data['status'];
+            // مسح سبب الرفض إذا تم تغيير الحالة إلى موافق
+            $request->manager_rejection_reason = $data['status'] === 'rejected' ? $data['rejection_reason'] : null;
+        } elseif ($data['response_type'] === 'hr') {
+            $request->hr_status = $data['status'];
+            // مسح سبب الرفض إذا تم تغيير الحالة إلى موافق
+            $request->hr_rejection_reason = $data['status'] === 'rejected' ? $data['rejection_reason'] : null;
+        }
+
+        // تحديث الحالة النهائية
+        $request->updateFinalStatus();
+        $request->save();
 
         // Create new notification with updated status
         $this->notificationService->createStatusUpdateNotification($request);
@@ -159,10 +173,12 @@ class AbsenceRequestService
         $startOfYear = Carbon::now()->startOfYear();
         $endOfYear = Carbon::now()->endOfYear();
 
-        return AbsenceRequest::where('user_id', $userId)
+        $count = AbsenceRequest::where('user_id', $userId)
             ->where('status', 'approved')
             ->whereBetween('absence_date', [$startOfYear, $endOfYear])
             ->count();
+
+        return $count;
     }
 
     public function getFilteredRequests($employeeName = null, $status = null)
@@ -170,7 +186,7 @@ class AbsenceRequestService
         $query = AbsenceRequest::with('user')->latest();
 
         if ($employeeName) {
-            $query->whereHas('user', function($q) use ($employeeName) {
+            $query->whereHas('user', function ($q) use ($employeeName) {
                 $q->where('name', 'like', "%{$employeeName}%");
             });
         }
@@ -180,5 +196,50 @@ class AbsenceRequestService
         }
 
         return $query->paginate(10);
+    }
+
+    public function canRespond($user = null)
+    {
+        $user = $user ?? Auth::user();
+
+        // التحقق من صلاحيات المديرين
+        if (
+            $user->hasRole(['team_leader', 'department_manager', 'company_manager']) &&
+            $user->hasPermissionTo('manager_respond_absence_request')
+        ) {
+            return true;
+        }
+
+        // التحقق من صلاحيات HR
+        if ($user->hasRole('hr') && $user->hasPermissionTo('hr_respond_absence_request')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function canModifyRequest(AbsenceRequest $request, $user = null)
+    {
+        $user = $user ?? Auth::user();
+
+        // يمكن للمستخدم تعديل طلبه الخاص إذا كان معلقاً
+        if ($user->id === $request->user_id && $request->status === 'pending') {
+            return true;
+        }
+
+        // يمكن للمديرين تعديل الطلبات إذا كان لديهم الصلاحية
+        if (
+            $user->hasRole(['team_leader', 'department_manager', 'company_manager']) &&
+            $user->hasPermissionTo('manager_respond_absence_request')
+        ) {
+            return true;
+        }
+
+        // يمكن لـ HR تعديل الطلبات إذا كان لديه الصلاحية
+        if ($user->hasRole('hr') && $user->hasPermissionTo('hr_respond_absence_request')) {
+            return true;
+        }
+
+        return false;
     }
 }

@@ -5,23 +5,41 @@ namespace App\Services;
 use App\Models\Notification;
 use App\Models\User;
 use App\Models\AbsenceRequest;
+use Illuminate\Support\Facades\DB;
 
 class NotificationService
 {
     public function createLeaveRequestNotification(AbsenceRequest $request): void
     {
-        User::where('role', 'manager')->each(function ($manager) use ($request) {
+        // نجلب المديرين المباشرين (admin/owner في الفريق)
+        $teamAdmins = DB::table('team_user')
+            ->where('team_id', $request->user->team_id)
+            ->where(function ($query) {
+                $query->where('role', 'admin')
+                    ->orWhere('role', 'owner');
+            })
+            ->pluck('user_id');
+
+        // نجلب HR
+        $hrUsers = User::role('hr')->pluck('id');
+
+        // نجمع كل المستخدمين الذين سيتلقون الإشعار
+        $notifyUsers = User::whereIn('id', $teamAdmins)
+            ->orWhereIn('id', $hrUsers)
+            ->get();
+
+        foreach ($notifyUsers as $user) {
             Notification::create([
-                'user_id' => $manager->id,
+                'user_id' => $user->id,
                 'type' => 'new_leave_request',
                 'data' => [
-                    'message' => "{$request->user->name} has submitted a leave request",
+                    'message' => "{$request->user->name} قام بتقديم طلب غياب",
                     'request_id' => $request->id,
                     'date' => $request->absence_date->format('Y-m-d'),
                 ],
                 'related_id' => $request->id
             ]);
-        });
+        }
     }
 
     public function createStatusUpdateNotification(AbsenceRequest $request): void
@@ -52,39 +70,69 @@ class NotificationService
 
     public function notifyRequestModified(AbsenceRequest $request): void
     {
-        // Delete existing notifications for this request modification
+        // حذف الإشعارات السابقة
         Notification::where('related_id', $request->id)
             ->where('type', 'leave_request_modified')
             ->delete();
 
-        User::where('role', 'manager')->each(function ($manager) use ($request) {
+        // نجلب المديرين المباشرين وHR
+        $teamAdmins = DB::table('team_user')
+            ->where('team_id', $request->user->team_id)
+            ->where(function ($query) {
+                $query->where('role', 'admin')
+                    ->orWhere('role', 'owner');
+            })
+            ->pluck('user_id');
+
+        $hrUsers = User::role('hr')->pluck('id');
+
+        $notifyUsers = User::whereIn('id', $teamAdmins)
+            ->orWhereIn('id', $hrUsers)
+            ->get();
+
+        foreach ($notifyUsers as $user) {
             Notification::create([
-                'user_id' => $manager->id,
+                'user_id' => $user->id,
                 'type' => 'leave_request_modified',
                 'data' => [
-                    'message' => "{$request->user->name} has modified their leave request",
+                    'message' => "{$request->user->name} قام بتعديل طلب الغياب",
                     'request_id' => $request->id,
                     'date' => $request->absence_date->format('Y-m-d'),
                 ],
                 'related_id' => $request->id
             ]);
-        });
+        }
     }
 
     public function notifyRequestDeleted(AbsenceRequest $request): void
     {
-        User::where('role', 'manager')->each(function ($manager) use ($request) {
+        // نجلب المديرين المباشرين وHR
+        $teamAdmins = DB::table('team_user')
+            ->where('team_id', $request->user->team_id)
+            ->where(function ($query) {
+                $query->where('role', 'admin')
+                    ->orWhere('role', 'owner');
+            })
+            ->pluck('user_id');
+
+        $hrUsers = User::role('hr')->pluck('id');
+
+        $notifyUsers = User::whereIn('id', $teamAdmins)
+            ->orWhereIn('id', $hrUsers)
+            ->get();
+
+        foreach ($notifyUsers as $user) {
             Notification::create([
-                'user_id' => $manager->id,
+                'user_id' => $user->id,
                 'type' => 'leave_request_deleted',
                 'data' => [
-                    'message' => "{$request->user->name} has deleted their leave request",
+                    'message' => "{$request->user->name} قام بحذف طلب الغياب",
                     'request_id' => $request->id,
                     'date' => $request->absence_date->format('Y-m-d'),
                 ],
                 'related_id' => $request->id
             ]);
-        });
+        }
     }
 
     public function getUnreadCount(User $user): int

@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use App\Models\Team;
 
 class AbsenceRequestController extends Controller
 {
@@ -21,33 +23,91 @@ class AbsenceRequestController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+        $employeeName = $request->input('employee_name');
+        $status = $request->input('status');
 
-        if ($user->role === 'manager') {
-            $employeeName = $request->input('employee_name');
-            $status = $request->input('status');
+        // التحقق من الصلاحيات
+        $canCreateAbsence = $user->hasPermissionTo('create_absence');
+        $canUpdateAbsence = $user->hasPermissionTo('update_absence');
+        $canDeleteAbsence = $user->hasPermissionTo('delete_absence');
+        $canRespondAsManager = $user->hasPermissionTo('manager_respond_absence_request');
+        $canRespondAsHR = $user->hasPermissionTo('hr_respond_absence_request');
 
-            $requests = $this->absenceRequestService->getFilteredRequests($employeeName, $status);
+        // تجهيز الطلبات حسب الدور
+        if ($user->hasRole('hr')) {
+            $requests = AbsenceRequest::with('user')->latest();
             $users = User::select('id', 'name')->get();
-            $absenceDays = null;
+        } elseif ($user->hasRole(['team_leader', 'department_manager', 'company_manager'])) {
+            // نستخدم علاقات Jetstream للوصول للفريق
+            $team = $user->currentTeam;
 
-            // If searching for specific employee, calculate their absence days
-            if ($employeeName) {
-                $searchedUser = User::where('name', 'like', "%{$employeeName}%")->first();
-                if ($searchedUser) {
-                    $absenceDays = $this->absenceRequestService->calculateAbsenceDays($searchedUser->id);
-                }
+            if ($team) {
+                \Log::info('Current Team:', ['team_id' => $team->id, 'team_name' => $team->name]);
+
+                // نجلب أعضاء الفريق
+                $teamMembers = $team->users->pluck('id')->toArray();
+
+                \Log::info('Team Members:', ['members' => $teamMembers]);
+
+                // نجلب طلبات الغياب
+                $requests = AbsenceRequest::query()
+                    ->with('user')
+                    ->whereIn('user_id', $teamMembers)
+                    ->latest();
+
+                $users = User::whereIn('id', $teamMembers)->get();
+
+                \Log::info('Requests Query:', [
+                    'sql' => $requests->toSql(),
+                    'bindings' => $requests->getBindings(),
+                    'count' => $requests->count()
+                ]);
+            } else {
+                // إذا لم يكن لديه فريق حالي
+                $requests = AbsenceRequest::query()->where('id', 0); // فريق فارغ
+                $users = collect();
+                \Log::warning('No current team found for user:', ['user_id' => $user->id]);
             }
-
-            return view('absence-requests.index', compact('users', 'requests', 'absenceDays', 'employeeName', 'status'));
         } else {
-            $requests = $this->absenceRequestService->getUserRequests();
-            $absenceDays = $this->absenceRequestService->calculateAbsenceDays($user->id);
-            return view('absence-requests.index', compact('requests', 'absenceDays'));
+            $requests = AbsenceRequest::with('user')
+                ->where('user_id', $user->id)
+                ->latest();
+            $users = collect([$user]);
         }
+
+        // تطبيق الفلاتر
+        if ($employeeName) {
+            $requests->whereHas('user', function ($q) use ($employeeName) {
+                $q->where('name', 'like', "%{$employeeName}%");
+            });
+        }
+
+        if ($status) {
+            $requests->where('status', $status);
+        }
+
+        $requests = $requests->paginate(10);
+
+        // حساب عدد أيام الغياب المعتمدة لكل مستخدم
+        $absenceDays = collect();
+        foreach ($requests as $absenceRequest) {
+            if (!$absenceDays->has($absenceRequest->user_id)) {
+                $count = $this->absenceRequestService->calculateAbsenceDays($absenceRequest->user_id);
+                $absenceDays->put($absenceRequest->user_id, $count);
+            }
+        }
+
+        return view('absence-requests.index', compact(
+            'requests',
+            'users',
+            'canCreateAbsence',
+            'canUpdateAbsence',
+            'canDeleteAbsence',
+            'canRespondAsManager',
+            'canRespondAsHR',
+            'absenceDays'
+        ));
     }
-
-
-
 
     public function store(Request $request)
     {
@@ -99,7 +159,6 @@ class AbsenceRequestController extends Controller
             ->with('success', 'Absence request submitted successfully.');
     }
 
-
     public function update(Request $request, AbsenceRequest $absenceRequest)
     {
         $user = Auth::user();
@@ -137,52 +196,94 @@ class AbsenceRequestController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role !== 'manager') {
-            return redirect()->route('welcome')->with('error', 'Unauthorized action.');
+        // التحقق من الصلاحيات أولاً
+        if ($user->hasRole('team_leader') && !$user->hasPermissionTo('manager_respond_absence_request')) {
+            return redirect()->back()->with('error', 'ليس لديك صلاحية الرد على طلبات الغياب');
+        }
+
+        if ($user->hasRole('hr') && !$user->hasPermissionTo('hr_respond_absence_request')) {
+            return redirect()->back()->with('error', 'ليس لديك صلاحية الرد على طلبات الغياب');
         }
 
         $validated = $request->validate([
             'status' => 'required|in:approved,rejected',
-            'rejection_reason' => 'required_if:status,rejected|nullable|string|max:255'
+            'rejection_reason' => 'required_if:status,rejected',
+            'response_type' => 'required|in:manager,hr'
         ]);
 
-        $this->absenceRequestService->updateStatus($absenceRequest, $validated);
+        // التحقق من نوع الرد وتحديث الحالة بناءً على الدور
+        if ($validated['response_type'] === 'manager' && $user->hasRole(['team_leader', 'department_manager', 'company_manager'])) {
+            $absenceRequest->manager_status = $validated['status'];
+            $absenceRequest->manager_rejection_reason = $validated['status'] === 'rejected' ? $validated['rejection_reason'] : null;
+        } elseif ($validated['response_type'] === 'hr' && $user->hasRole('hr')) {
+            $absenceRequest->hr_status = $validated['status'];
+            $absenceRequest->hr_rejection_reason = $validated['status'] === 'rejected' ? $validated['rejection_reason'] : null;
+        } else {
+            return redirect()->back()->with('error', 'نوع الرد غير صحيح');
+        }
 
-        return redirect()->route('absence-requests.index')
-            ->with('success', 'Request status updated successfully.');
+        // تحديث الحالة النهائية
+        $absenceRequest->updateFinalStatus();
+        $absenceRequest->save();
+
+        return redirect()->back()->with('success', 'تم تحديث حالة الطلب بنجاح');
     }
 
     public function modifyResponse(Request $request, $id)
     {
         $user = Auth::user();
-        if ($user->role !== 'manager') {
-            return redirect()->route('welcome')->with('error', 'Unauthorized action.');
-        }
-
         $absenceRequest = AbsenceRequest::findOrFail($id);
+
+        // التحقق من الصلاحيات
+        if (!($user->hasRole(['team_leader', 'department_manager', 'company_manager']) || $user->hasRole('hr'))) {
+            return redirect()->back()->with('error', 'غير مصرح لك بتعديل الرد');
+        }
 
         $validated = $request->validate([
             'status' => 'required|in:approved,rejected',
-            'rejection_reason' => 'required_if:status,rejected|nullable|string|max:255'
+            'rejection_reason' => 'required_if:status,rejected',
+            'response_type' => 'required|in:manager,hr'
         ]);
 
-        $this->absenceRequestService->modifyResponse($absenceRequest, $validated);
+        // التأكد من أن المدير يعدل رده فقط وHR يعدل رده فقط
+        if ($validated['response_type'] === 'manager' && $user->hasRole(['team_leader', 'department_manager', 'company_manager'])) {
+            $absenceRequest->manager_status = $validated['status'];
+            // مسح سبب الرفض إذا تم تغيير الحالة إلى موافق
+            $absenceRequest->manager_rejection_reason = $validated['status'] === 'rejected' ? $validated['rejection_reason'] : null;
+        } elseif ($validated['response_type'] === 'hr' && $user->hasRole('hr')) {
+            $absenceRequest->hr_status = $validated['status'];
+            // مسح سبب الرفض إذا تم تغيير الحالة إلى موافق
+            $absenceRequest->hr_rejection_reason = $validated['status'] === 'rejected' ? $validated['rejection_reason'] : null;
+        } else {
+            return redirect()->back()->with('error', 'نوع الرد غير صحيح');
+        }
 
-        return redirect()->route('absence-requests.index')
-            ->with('success', 'Response updated successfully');
+        // تحديث الحالة النهائية
+        $absenceRequest->updateFinalStatus();
+        $absenceRequest->save();
+
+        return redirect()->back()->with('success', 'تم تعديل الرد بنجاح');
     }
 
     public function resetStatus(AbsenceRequest $absenceRequest)
     {
         $user = Auth::user();
+        $responseType = request('response_type');
 
-        if ($user->role !== 'manager') {
-            return redirect()->route('welcome')->with('error', 'Unauthorized action.');
+        if ($responseType === 'manager' && $user->hasRole(['team_leader', 'department_manager', 'company_manager'])) {
+            $absenceRequest->manager_status = 'pending';
+            $absenceRequest->manager_rejection_reason = null;
+        } elseif ($responseType === 'hr' && $user->hasRole('hr')) {
+            $absenceRequest->hr_status = 'pending';
+            $absenceRequest->hr_rejection_reason = null;
+        } else {
+            return redirect()->back()->with('error', 'غير مصرح لك بإعادة تعيين الحالة');
         }
 
-        $this->absenceRequestService->resetStatus($absenceRequest);
+        // تحديث الحالة النهائية
+        $absenceRequest->updateFinalStatus();
+        $absenceRequest->save();
 
-        return redirect()->route('absence-requests.index')
-            ->with('success', 'Request status reset to pending successfully.');
+        return redirect()->back()->with('success', 'تم إعادة تعيين الحالة بنجاح');
     }
 }

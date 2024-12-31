@@ -23,7 +23,9 @@
     <div>
 
     </div>
+    @if(auth()->check() && auth()->user()->currentTeam)
     @livewire('navigation-menu')
+@endif
 
     <div class="wrapper flex-grow-1 d-flex flex-column">
         @if(session('success'))

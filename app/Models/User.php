@@ -100,4 +100,16 @@ class User extends Authenticatable
   {
     return $this->hasMany(Message::class, 'receiver_id');
   }
+
+  public function ownedTeams()
+  {
+    return $this->hasMany(Team::class, 'user_id');
+  }
+
+  public function teams()
+  {
+    return $this->belongsToMany(Team::class, 'team_user')
+      ->withPivot('role')
+      ->withTimestamps();
+  }
 }

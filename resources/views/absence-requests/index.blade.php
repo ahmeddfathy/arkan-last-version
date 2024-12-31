@@ -19,7 +19,7 @@
     </div>
     @endif
 
-    @if(Auth::user()->role === 'manager')
+    @if(Auth::user()->hasRole('team_leader') || Auth::user()->hasRole('hr'))
     <div class="card mb-4">
         <div class="card-body">
             <form method="GET" action="{{ route('absence-requests.index') }}" class="row g-3">
@@ -59,16 +59,31 @@
     </div>
     @endif
 
-
-
     @if(isset($absenceDays))
     <div class="alert alert-info">
         <strong>Your Absence Days:</strong> {{ $absenceDays }}
     </div>
     @endif
 
-
-
+    @if(Auth::user()->hasRole(['hr', 'team_leader', 'department_manager', 'company_manager']))
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">ملخص أيام الغياب المعتمدة</h5>
+            <div class="row">
+                @foreach($requests->unique('user_id') as $request)
+                <div class="col-md-3 mb-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>{{ $request->user->name }}:</span>
+                        <span class="badge bg-info">
+                            {{ $absenceDays->get($request->user_id, 0) }} أيام
+                        </span>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
 
     <div class="row justify-content-center">
         <div class="col-md-12">
@@ -77,131 +92,188 @@
                     <h5 class="mb-0">
                         <i class="fas fa-calendar-alt"></i> Absence Requests
                     </h5>
+                    @if($canCreateAbsence)
                     <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#createAbsenceModal">
-                        <i class="fas fa-plus"></i> New Request
+                        <i class="fas fa-plus"></i> طلب جديد
                     </button>
+                    @endif
                 </div>
 
                 <div class="container">
-
                     <div class="table-responsive">
-                        <table class="table">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>
-                                            Number Of absence days
-                                        </th>
-                                        <th>Date</th>
-                                        <th>Reason</th>
-                                        <th>Status</th>
-                                        <th>Rejection Reason</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($requests as $request)
-                                    <tr class="request-row">
-                                        <td>{{ $request->user->name ?? 'Unknown User' }}</td>
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>الموظف</th>
+                                    <th>أيام الغياب المعتمدة</th>
+                                    <th>تاريخ الغياب</th>
+                                    <th>السبب</th>
+                                    <th>رد المدير</th>
+                                    <th>سبب رفض المدير</th>
+                                    <th>رد HR</th>
+                                    <th>سبب رفض HR</th>
+                                    <th>الحالة النهائية</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($requests as $request)
+                                <tr class="request-row">
+                                    <td>{{ $request->user->name ?? 'غير معروف' }}</td>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            {{ $absenceDays->get($request->user_id, 0) }} أيام
+                                        </span>
+                                    </td>
+                                    <td>{{ $request->absence_date }}</td>
+                                    <td>{{ $request->reason }}</td>
+                                    <td>
+                                        <span class="badge bg-{{
+                                            $request->manager_status === 'approved' ? 'success' :
+                                            ($request->manager_status === 'rejected' ? 'danger' : 'warning')
+                                        }}">
+                                            {{
+                                                $request->manager_status === 'approved' ? 'موافق' :
+                                                ($request->manager_status === 'rejected' ? 'مرفوض' : 'معلق')
+                                            }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $request->manager_rejection_reason ?? '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-{{
+                                            $request->hr_status === 'approved' ? 'success' :
+                                            ($request->hr_status === 'rejected' ? 'danger' : 'warning')
+                                        }}">
+                                            {{
+                                                $request->hr_status === 'approved' ? 'موافق' :
+                                                ($request->hr_status === 'rejected' ? 'مرفوض' : 'معلق')
+                                            }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $request->hr_rejection_reason ?? '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-{{
+                                            $request->status === 'approved' ? 'success' :
+                                            ($request->status === 'rejected' ? 'danger' : 'warning')
+                                        }}">
+                                            {{
+                                                $request->status === 'approved' ? 'موافق' :
+                                                ($request->status === 'rejected' ? 'مرفوض' : 'معلق')
+                                            }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager']))
+                                        @if($request->manager_status === 'pending')
+                                        @if($canRespondAsManager)
+                                        <button class="btn btn-sm btn-info respond-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#respondModal"
+                                            data-request-id="{{ $request->id }}"
+                                            data-response-type="manager">
+                                            <i class="fas fa-reply"></i> رد المدير
+                                        </button>
+                                        @endif
+                                        @else
+                                        <button class="btn btn-sm btn-warning modify-response-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modifyResponseModal"
+                                            data-request-id="{{ $request->id }}"
+                                            data-response-type="manager"
+                                            data-status="{{ $request->manager_status }}"
+                                            data-reason="{{ $request->manager_rejection_reason }}">
+                                            <i class="fas fa-edit"></i> تعديل رد المدير
+                                        </button>
 
-
-                                        <td>
-                                            @if(Auth::user()->id === $request->user_id)
-                                            {{ $absenceDays }}
-                                            @else
-
-                                            @if($request->user)
-                                            {{ $request->user->approved_absence_days ?? 0 }}
-                                            @else
-                                            0
-                                            @endif
-
-                                            @endif
-                                        </td>
-
-
-
-                                        <td>{{ $request->absence_date }}</td>
-                                        <td>{{ $request->reason }}</td>
-                                        <td>
-                                            <span class="badge bg-{{ $request->status === 'approved' ? 'success' : ($request->status === 'rejected' ? 'danger' : 'warning') }}">
-                                                {{ ucfirst($request->status) }}
-                                            </span>
-                                        </td>
-                                        <td>{{ $request->rejection_reason }}</td>
-
-                                        <td>
-                                            @if($request->status === 'pending')
-                                            @if(Auth::user()->id === $request->user_id)
-                                            <button class="btn btn-sm btn-primary edit-btn"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#editAbsenceModal"
-                                                data-request="{{ json_encode($request) }}">
-                                                <i class="fas fa-edit"></i>
+                                        <form action="{{ route('absence-requests.reset-status', $request) }}"
+                                            method="POST"
+                                            class="d-inline">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="response_type" value="manager">
+                                            <button type="submit"
+                                                class="btn btn-sm btn-secondary"
+                                                onclick="return confirm('هل أنت متأكد من إعادة تعيين الحالة؟')">
+                                                <i class="fas fa-undo"></i> إعادة تعيين
                                             </button>
-                                            <form action="{{ route('absence-requests.destroy', $request) }}"
-                                                method="POST"
-                                                class="d-inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                    class="btn btn-sm btn-danger"
-                                                    onclick="return confirm('Are you sure?')">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                            @endif
-                                            @endif
+                                        </form>
+                                        @endif
+                                        @endif
 
-                                            @if(Auth::user()->role === 'manager')
-                                            @if($request->status === 'pending')
-                                            <button class="btn btn-sm btn-info respond-btn"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#respondModal"
-                                                data-request-id="{{ $request->id }}">
-                                                <i class="fas fa-reply"></i> Respond
+                                        @if(Auth::user()->hasRole('hr'))
+                                        @if($request->hr_status === 'pending')
+                                        @if($canRespondAsHR)
+                                        <button class="btn btn-sm btn-info respond-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#respondModal"
+                                            data-request-id="{{ $request->id }}"
+                                            data-response-type="hr">
+                                            <i class="fas fa-reply"></i> رد HR
+                                        </button>
+                                        @endif
+                                        @else
+                                        <button class="btn btn-sm btn-warning modify-response-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modifyResponseModal"
+                                            data-request-id="{{ $request->id }}"
+                                            data-response-type="hr"
+                                            data-status="{{ $request->hr_status }}"
+                                            data-reason="{{ $request->hr_rejection_reason }}">
+                                            <i class="fas fa-edit"></i> تعديل رد HR
+                                        </button>
+
+                                        <form action="{{ route('absence-requests.reset-status', $request) }}"
+                                            method="POST"
+                                            class="d-inline">
+                                            @csrf
+                                            @method('PATCH')
+                                            <input type="hidden" name="response_type" value="hr">
+                                            <button type="submit"
+                                                class="btn btn-sm btn-secondary"
+                                                onclick="return confirm('هل أنت متأكد من إعادة تعيين الحالة؟')">
+                                                <i class="fas fa-undo"></i> إعادة تعيين
                                             </button>
-                                            @endif
-                                            @if($request->status !== 'pending')
-                                            <form action="{{ route('absence-requests.reset-status', $request) }}" method="POST" class="d-inline">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="btn btn-sm btn-secondary" onclick="return confirm('Are you sure you want to reset this request to pending?')">
-                                                    <i class="fas fa-undo"></i> Reset
-                                                </button>
-                                            </form>
-                                            @endif
-                                            @if($request->status === 'approved' || $request->status === 'rejected' )
-                                            <button class="btn btn-sm btn-warning modify-response-btn"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#modifyResponseModal"
-                                                data-request-id="{{ $request->id }}"
-                                                data-status="{{ $request->status }}"
-                                                data-reason="{{ $request->rejection_reason }}">
-                                                <i class="fas fa-edit"></i> Modify
+                                        </form>
+                                        @endif
+                                        @endif
+
+                                        @if(Auth::id() === $request->user_id && $request->status === 'pending' && $canUpdateAbsence)
+                                        <button class="btn btn-sm btn-warning edit-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editAbsenceModal"
+                                            data-request="{{ json_encode($request) }}">
+                                            <i class="fas fa-edit"></i> تعديل
+                                        </button>
+                                        @endif
+
+                                        @if(Auth::id() === $request->user_id && $request->status === 'pending' && $canDeleteAbsence)
+                                        <form action="{{ route('absence-requests.destroy', $request) }}"
+                                            method="POST"
+                                            class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                class="btn btn-sm btn-danger"
+                                                onclick="return confirm('هل أنت متأكد من الحذف؟')">
+                                                <i class="fas fa-trash"></i> حذف
                                             </button>
-                                            @endif
-                                            @endif
-                                        </td>
-
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="6">No requests found.</td>
-                                    </tr>
-                                    @endforelse
-
-                                </tbody>
-                            </table>
+                                        </form>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="10" class="text-center">لا توجد طلبات غياب</td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
 
                     {{ $requests->links() }}
                 </div>
-
             </div>
         </div>
-
 
         <!-- Create Modal -->
         <div class="modal fade" id="createAbsenceModal" tabindex="-1">
@@ -329,26 +401,31 @@
                     <form id="respondForm" method="POST">
                         @csrf
                         <div class="modal-header">
-                            <h5 class="modal-title">Respond to Request</h5>
+                            <h5 class="modal-title" id="responseTitle">الرد على الطلب</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
+                            <input type="hidden" name="response_type" id="response_type">
+
                             <div class="mb-3">
-                                <label for="response_status" class="form-label">Response Status</label>
+                                <label class="form-label">الحالة</label>
                                 <select class="form-select" id="response_status" name="status" required>
-                                    <option value="approved">Approve</option>
-                                    <option value="rejected">Reject</option>
+                                    <option value="approved">موافق</option>
+                                    <option value="rejected">مرفوض</option>
                                 </select>
                             </div>
 
                             <div class="mb-3" id="response_reason_container" style="display: none;">
-                                <label for="response_reason" class="form-label">Reason </label>
-                                <textarea class="form-control" id="response_reason" name="rejection_reason" maxlength="255"></textarea>
+                                <label class="form-label">سبب الرفض</label>
+                                <textarea class="form-control"
+                                    id="response_reason"
+                                    name="rejection_reason"
+                                    maxlength="255"></textarea>
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Submit Response</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-primary">حفظ الرد</button>
                         </div>
                     </form>
                 </div>
@@ -362,27 +439,32 @@
                     <form id="modifyResponseForm" method="POST">
                         @csrf
                         @method('PATCH')
+                        <input type="hidden" name="response_type" id="modify_response_type">
+
                         <div class="modal-header">
-                            <h5 class="modal-title">Modify Response</h5>
+                            <h5 class="modal-title">تعديل الرد</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
                             <div class="mb-3">
-                                <label for="modify_status" class="form-label">Status</label>
+                                <label for="modify_status" class="form-label">الحالة</label>
                                 <select class="form-select" id="modify_status" name="status" required>
-                                    <option value="approved">Approved</option>
-                                    <option value="rejected">Rejected</option>
+                                    <option value="approved">موافق</option>
+                                    <option value="rejected">مرفوض</option>
                                 </select>
                             </div>
 
                             <div class="mb-3" id="modify_reason_container" style="display: none;">
-                                <label for="modify_reason" class="form-label">Reason </label>
-                                <textarea class="form-control" id="response_reason" name="rejection_reason" maxlength="255"></textarea>
+                                <label for="modify_reason" class="form-label">سبب الرفض</label>
+                                <textarea class="form-control"
+                                    id="modify_reason"
+                                    name="rejection_reason"
+                                    maxlength="255"></textarea>
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
                         </div>
                     </form>
                 </div>
@@ -390,12 +472,6 @@
         </div>
 
     </div>
-
-
-    @endsection
-
-
-
 
     @push('scripts')
     <script>
@@ -423,7 +499,17 @@
             document.querySelectorAll('.respond-btn').forEach(button => {
                 button.addEventListener('click', function() {
                     const requestId = this.dataset.requestId;
+                    const responseType = this.dataset.responseType;
                     const form = document.getElementById('respondForm');
+
+                    // تحديث عنوان المودال
+                    document.getElementById('responseTitle').textContent =
+                        responseType === 'manager' ? 'رد المدير' : 'رد HR';
+
+                    // تحديث نوع الرد
+                    document.getElementById('response_type').value = responseType;
+
+                    // تحديث مسار الفورم
                     form.action = `/absence-requests/${requestId}/status`;
                 });
             });
@@ -461,15 +547,30 @@
         document.querySelectorAll('.modify-response-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const requestId = this.dataset.requestId;
+                const responseType = this.dataset.responseType;
                 const form = document.getElementById('modifyResponseForm');
+
                 form.action = `/absence-requests/${requestId}/modify`;
 
+                // تحديث نوع الرد في النموذج
+                document.getElementById('modify_response_type').value = responseType;
 
+                // تحديث الحالة وسبب الرفض
                 const requestStatus = this.dataset.status;
                 const requestReason = this.dataset.reason;
 
                 document.getElementById('modify_status').value = requestStatus;
                 document.getElementById('modify_reason').value = requestReason || '';
+
+                // عرض/إخفاء حقل سبب الرفض
+                const reasonContainer = document.getElementById('modify_reason_container');
+                if (requestStatus === 'rejected') {
+                    reasonContainer.style.display = 'block';
+                    document.getElementById('modify_reason').required = true;
+                } else {
+                    reasonContainer.style.display = 'none';
+                    document.getElementById('modify_reason').required = false;
+                }
             });
         });
 
@@ -513,5 +614,6 @@
         });
     </script>
 
-
     @endpush
+
+    @endsection
