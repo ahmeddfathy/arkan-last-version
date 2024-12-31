@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Notification extends Model
 {
@@ -11,8 +10,8 @@ class Notification extends Model
         'user_id',
         'type',
         'data',
-        'read_at',
-        'related_id'
+        'related_id',
+        'read_at'
     ];
 
     protected $casts = [
@@ -20,12 +19,12 @@ class Notification extends Model
         'read_at' => 'datetime'
     ];
 
-    public function user(): BelongsTo
+    public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function markAsRead(): void
+    public function markAsRead()
     {
         $this->update(['read_at' => now()]);
     }

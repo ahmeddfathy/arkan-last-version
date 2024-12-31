@@ -120,51 +120,75 @@ class AbsenceRequestService
             throw new \Illuminate\Auth\Access\AuthorizationException('You are not authorized to respond to absence requests.');
         }
 
+        $oldStatus = $request->status;
+
         $request->update([
             'status' => $data['status'],
             'rejection_reason' => $data['status'] == 'rejected' ? $data['rejection_reason'] : null
         ]);
 
-        // Send notification to employee about the status update
-        $this->notificationService->createStatusUpdateNotification($request);
+        // إرسال إشعار فقط إذا تغيرت الحالة
+        if ($oldStatus !== $request->status) {
+            $this->notificationService->createStatusUpdateNotification($request);
+        }
 
         return $request;
     }
 
-    public function resetStatus(AbsenceRequest $request)
+    public function resetStatus(AbsenceRequest $request, string $responseType)
     {
-        $request->update([
-            'status' => 'pending',
-            'rejection_reason' => null
-        ]);
+        $oldStatus = [
+            'manager_status' => $request->manager_status,
+            'hr_status' => $request->hr_status
+        ];
 
-        // Delete existing status notifications
-        $this->notificationService->deleteStatusNotifications($request);
+        if ($responseType === 'manager') {
+            $request->manager_status = 'pending';
+            $request->manager_rejection_reason = null;
+        } elseif ($responseType === 'hr') {
+            $request->hr_status = 'pending';
+            $request->hr_rejection_reason = null;
+        }
+
+        $request->updateFinalStatus();
+        $request->save();
+
+        // إرسال إشعار فقط إذا تغيرت الحالة
+        if (
+            $oldStatus['manager_status'] !== $request->manager_status ||
+            $oldStatus['hr_status'] !== $request->hr_status
+        ) {
+            $this->notificationService->notifyStatusReset($request, $responseType);
+        }
 
         return $request;
     }
 
     public function modifyResponse(AbsenceRequest $request, array $data)
     {
-        // Delete existing notifications before updating status
-        $this->notificationService->deleteStatusNotifications($request);
+        $oldStatus = [
+            'manager_status' => $request->manager_status,
+            'hr_status' => $request->hr_status
+        ];
 
         if ($data['response_type'] === 'manager') {
             $request->manager_status = $data['status'];
-            // مسح سبب الرفض إذا تم تغيير الحالة إلى موافق
             $request->manager_rejection_reason = $data['status'] === 'rejected' ? $data['rejection_reason'] : null;
         } elseif ($data['response_type'] === 'hr') {
             $request->hr_status = $data['status'];
-            // مسح سبب الرفض إذا تم تغيير الحالة إلى موافق
             $request->hr_rejection_reason = $data['status'] === 'rejected' ? $data['rejection_reason'] : null;
         }
 
-        // تحديث الحالة النهائية
         $request->updateFinalStatus();
         $request->save();
 
-        // Create new notification with updated status
-        $this->notificationService->createStatusUpdateNotification($request);
+        // إرسال إشعار فقط إذا تغيرت الحالة
+        if (
+            $oldStatus['manager_status'] !== $request->manager_status ||
+            $oldStatus['hr_status'] !== $request->hr_status
+        ) {
+            $this->notificationService->createStatusUpdateNotification($request);
+        }
 
         return $request;
     }
