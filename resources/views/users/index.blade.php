@@ -86,6 +86,7 @@
                             <th>Phone</th>
                             <th>Status</th>
                             <th>Roles</th>
+
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -107,6 +108,7 @@
                                 <span class="badge bg-info me-1">{{ $role->name }}</span>
                                 @endforeach
                             </td>
+
                             <td>
                                 <div class="btn-group">
                                     <a href="{{ route('users.show', $user->id) }}" class="btn btn-sm btn-info">
@@ -115,7 +117,7 @@
                                     <button type="button" class="btn btn-sm btn-primary"
                                         onclick="openRolesModal({{ $user->id }}, '{{ $user->name }}')"
                                         data-roles='{{ $user->roles ? $user->roles->pluck('name') : '[]' }}'
-                                        data-permissions='{{ $user->permissions ? $user->permissions->pluck('name') : '[]' }}'>
+                                        data-effective-permissions='{{ json_encode($user->effective_permissions) }}'>
                                         <i class="fas fa-user-shield"></i>
                                     </button>
                                     <button type="button" class="btn btn-sm btn-warning"
@@ -276,38 +278,61 @@
         $('#rolesModal').modal('show');
 
         try {
-            // تحديث الأدوار والصلاحيات الحالية
-            const userRoles = JSON.parse($(`button[onclick="openRolesModal(${userId}, '${userName}')"]`).attr('data-roles') || '[]');
-            const userPermissions = JSON.parse($(`button[onclick="openRolesModal(${userId}, '${userName}')"]`).attr('data-permissions') || '[]');
+            const $button = $(`button[onclick="openRolesModal(${userId}, '${userName}')"]`);
+            const userRoles = JSON.parse($button.attr('data-roles') || '[]');
 
             // تحديد الأدوار الحالية
             if (userRoles.length > 0) {
-                $('#roleSelect').val(userRoles[0]); // نأخذ أول دور فقط
+                $('#roleSelect').val(userRoles[0]);
+                updatePermissionsByRole(); // استدعاء الدالة مباشرة بعد تحديد الرول
             } else {
                 $('#roleSelect').val('');
+                $('.permission-checkbox').prop('checked', false);
             }
-
-            // تحديد الصلاحيات الحالية
-            $('.permission-checkbox').prop('checked', false);
-            userPermissions.forEach(permission => {
-                $(`#perm_${permission}`).prop('checked', true);
-            });
         } catch (error) {
-            console.error('Error parsing roles/permissions:', error);
+            console.error('Error parsing roles:', error);
             toastr.error('حدث خطأ في تحميل البيانات');
         }
     }
 
     function updatePermissionsByRole() {
         const selectedRole = $('#roleSelect').val();
-        if (!selectedRole) return;
+        const userId = $('#userId').val();
 
-        // طلب AJAX لجلب صلاحيات الدور المحدد
-        $.get(`/roles/${selectedRole}/permissions`, function(permissions) {
+        if (!selectedRole) {
             $('.permission-checkbox').prop('checked', false);
-            permissions.forEach(permission => {
-                $(`#perm_${permission}`).prop('checked', true);
-            });
+            return;
+        }
+
+        // جلغاء تحديد كل الصلاحيات أولاً
+        $('.permission-checkbox').prop('checked', false);
+
+        // جلب صلاحيات الرول المحدد
+        $.ajax({
+            url: `/roles/${selectedRole}/permissions`,
+            method: 'GET',
+            success: function(rolePermissions) {
+                console.log('Role permissions:', rolePermissions); // للتأكد من الصلاحيات المستلمة
+
+                // تحديد صلاحيات الرول
+                rolePermissions.forEach(permission => {
+                    $(`#perm_${permission}`).prop('checked', true);
+                });
+
+                // ثم نحصل على الصلاحيات المحظورة للمستخدم
+                $.get(`/users/${userId}/forbidden-permissions`, function(forbiddenPermissions) {
+                    console.log('Forbidden permissions:', forbiddenPermissions); // للتأكد من الصلاحيات المحظورة
+
+                    // إلغاء تحديد الصلاحيات المحظورة
+                    forbiddenPermissions.forEach(permission => {
+                        $(`#perm_${permission}`).prop('checked', false);
+                    });
+                });
+            },
+            error: function(xhr) {
+                console.error('Error loading role permissions:', xhr);
+                toastr.error('حدث خطأ في تحميل صلاحيات الرول');
+            }
         });
     }
 
@@ -318,24 +343,35 @@
             return $(this).val();
         }).get();
 
+        const data = {
+            _token: '{{ csrf_token() }}',
+            permissions: selectedPermissions
+        };
+
+        if (selectedRole) {
+            data.roles = [selectedRole];
+        }
+
         $.ajax({
             url: `/users/${userId}/roles-permissions`,
             method: 'POST',
-            data: {
-                _token: '{{ csrf_token() }}',
-                roles: [selectedRole],
-                permissions: selectedPermissions
-            },
+            data: data,
             success: function(response) {
                 if (response.success) {
                     toastr.success(response.message);
                     $('#rolesModal').modal('hide');
-                    // تحديث الصفحة لعرض التغييرات
                     location.reload();
+                } else {
+                    toastr.error(response.message);
                 }
             },
-            error: function() {
-                toastr.error('حدث خطأ أثناء حفظ التغييرات');
+            error: function(xhr) {
+                let errorMessage = 'حدث خطأ أثناء حفظ التغييرات';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                toastr.error(errorMessage);
+                console.error('Error details:', xhr.responseJSON);
             }
         });
     }

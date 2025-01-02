@@ -48,20 +48,19 @@ class OverTimeRequestsController extends Controller
             ->paginate(10);
 
         // متغير لطلبات فريق HR
-        $noTeamRequests = collect();
+        $noTeamRequests = OverTimeRequests::query()
+            ->with('user')
+            ->whereHas('user', function ($query) {
+                $query->whereDoesntHave('teams');
+            })
+            ->latest()
+            ->paginate(10);
+
         $noTeamOvertimeHoursCount = [];
 
         // تجهيز طلبات الفريق للمدراء و HR
         if ($user->hasRole('hr')) {
-            // جلب طلبات الموظفين الذين ليسوا في أي فريق
-            $noTeamRequests = OverTimeRequests::query()
-                ->with('user')
-                ->whereHas('user', function ($query) {
-                    $query->whereDoesntHave('teams');
-                })
-                ->latest();
-
-            // حساب ساعات العمل الإضافي للموظفين بدون فريق
+            // جساب ساعات العمل الإضافي للموظفين بدون فريق
             $noTeamUserIds = $noTeamRequests->pluck('user_id')->unique();
             foreach ($noTeamUserIds as $userId) {
                 $noTeamOvertimeHoursCount[$userId] = $this->overTimeRequestService->calculateOvertimeHours($userId);
@@ -74,8 +73,20 @@ class OverTimeRequestsController extends Controller
                         ->whereDoesntHave('teams', function ($q) {
                             $q->whereRaw('team_user.role = ?', ['admin']);
                         });
-                })
-                ->latest();
+                });
+
+            if ($employeeName) {
+                $teamRequests->whereHas('user', function ($q) use ($employeeName) {
+                    $q->where('name', 'like', "%{$employeeName}%");
+                });
+            }
+
+            if ($status) {
+                $teamRequests->where('status', $status);
+            }
+
+            $pendingCount = $teamRequests->clone()->where('status', 'pending')->count();
+            $teamRequests = $teamRequests->latest()->paginate(10);
             $users = User::select('id', 'name')->get();
         } elseif ($user->hasRole(['team_leader', 'department_manager', 'company_manager'])) {
             $team = $user->currentTeam;
@@ -89,58 +100,37 @@ class OverTimeRequestsController extends Controller
                             $q->where('teams.id', $team->id)
                                 ->whereRaw('team_user.role = ?', ['admin']);
                         });
-                    })
-                    ->latest();
+                    });
+
+                if ($employeeName) {
+                    $teamRequests->whereHas('user', function ($q) use ($employeeName) {
+                        $q->where('name', 'like', "%{$employeeName}%");
+                    });
+                }
+
+                if ($status) {
+                    $teamRequests->where('status', $status);
+                }
+
+                $pendingCount = $teamRequests->clone()->where('status', 'pending')->count();
+                $teamRequests = $teamRequests->latest()->paginate(10);
                 $users = User::whereIn('id', $teamMembers)->get();
             } else {
-                $teamRequests = OverTimeRequests::query()->where('id', 0);
+                $teamRequests = OverTimeRequests::query()->where('id', 0)->paginate(10);
                 $users = collect();
+                $pendingCount = 0;
             }
         } else {
-            $teamRequests = collect();
+            $teamRequests = OverTimeRequests::query()->where('id', 0)->paginate(10);
             $users = collect([$user]);
+            $pendingCount = 0;
         }
 
         // حساب ساعات العمل الإضافي لكل مستخدم
         $overtimeHoursCount = [];
-        if ($teamRequests instanceof \Illuminate\Database\Eloquent\Builder) {
-            $userIds = $teamRequests->pluck('user_id')->unique();
-            foreach ($userIds as $userId) {
-                $overtimeHoursCount[$userId] = $this->overTimeRequestService->calculateOvertimeHours($userId);
-            }
-        }
-
-        // تطبيق الفلاتر على طلبات الفريق
-        if ($employeeName) {
-            $teamRequests->whereHas('user', function ($q) use ($employeeName) {
-                $q->where('name', 'like', "%{$employeeName}%");
-            });
-
-            if ($noTeamRequests instanceof \Illuminate\Database\Eloquent\Builder) {
-                $noTeamRequests->whereHas('user', function ($q) use ($employeeName) {
-                    $q->where('name', 'like', "%{$employeeName}%");
-                });
-            }
-        }
-
-        if ($status) {
-            $teamRequests->where('status', $status);
-
-            if ($noTeamRequests instanceof \Illuminate\Database\Eloquent\Builder) {
-                $noTeamRequests->where('status', $status);
-            }
-        }
-
-        // حساب عدد الطلبات المعلقة
-        $pendingCount = 0;
-        if ($teamRequests instanceof \Illuminate\Database\Eloquent\Builder) {
-            $pendingCount = $teamRequests->clone()->where('status', 'pending')->count();
-            $teamRequests = $teamRequests->paginate(10);
-        }
-
-        // تطبيق الترقيم الصفحي على طلبات الموظفين بدون فريق
-        if ($noTeamRequests instanceof \Illuminate\Database\Eloquent\Builder) {
-            $noTeamRequests = $noTeamRequests->paginate(10);
+        $userIds = $teamRequests->pluck('user.id')->unique();
+        foreach ($userIds as $userId) {
+            $overtimeHoursCount[$userId] = $this->overTimeRequestService->calculateOvertimeHours($userId);
         }
 
         return view('overtime-requests.index', compact(

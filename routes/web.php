@@ -107,7 +107,6 @@ Route::middleware(['auth', 'role:manager,employee'])->group(function () {
     Route::resource('overtime-requests', OverTimeRequestsController::class);
 
     // Leave
-    Route::resource('/absence-requests', AbsenceRequestController::class);
 
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
@@ -118,10 +117,6 @@ Route::middleware(['auth', 'role:manager,employee'])->group(function () {
         ->name('user.previewAttendance');
     Route::get('/user/{employee_id}/attendance-report', [DashboardController::class, 'generateAttendancePDF'])
         ->name('user.downloadAttendanceReport');
-    Route::patch('/absence-requests/{absenceRequest}/reset-status', [AbsenceRequestController::class, 'resetStatus'])
-        ->name('absence-requests.reset-status');
-    Route::patch('/absence-requests/{id}/modify', [AbsenceRequestController::class, 'modifyResponse'])
-        ->name('absence-requests.modify');
 
     Route::get('/salary-sheet/{userId}/{month}/{filename}', function ($employee_id, $month, $filename) {
         $user = Auth::user();
@@ -144,6 +139,10 @@ Route::middleware(['auth', 'role:manager,employee'])->group(function () {
     Route::post('/chat/mark-seen', [ChatController::class, 'markAsSeen']);
     Route::post('/status/update', [OnlineStatusController::class, 'updateStatus']);
     Route::get('/status/user/{userId}', [OnlineStatusController::class, 'getUserStatus']);
+
+    // إضافة راوت preview attendance
+    Route::get('/attendance/preview/{employee_id}', [AttendanceController::class, 'preview'])
+        ->name('attendance.preview');
 });
 Route::get('/salary-sheets', [SalarySheetController::class, 'index'])->name('salary-sheets.index');
 Route::post('/salary-sheets/upload', [SalarySheetController::class, 'upload'])->name('salary-sheets.upload');
@@ -160,14 +159,9 @@ Route::post('user/import', [UserController::class, 'import'])->name('user.import
 
 Route::post('/users/{user}/roles-permissions', [UserController::class, 'updateRolesAndPermissions'])
     ->name('users.roles-permissions');
-Route::get('/roles/{role}/permissions', function ($role) {
-    $role = Role::findByName($role);
-    if (!$role) {
-        return response()->json([]);
-    }
-    return response()->json($role->permissions->pluck('name'));
-});
-
+Route::get('/roles/{role}/permissions', [UserController::class, 'getRolePermissions'])
+    ->name('roles.permissions')
+    ->middleware('auth');
 Route::post('/users/{user}/remove-roles', [UserController::class, 'removeRolesAndPermissions'])
     ->name('users.remove-roles');
 Route::post('/users/{user}/reset-to-employee', [UserController::class, 'resetToEmployee'])
@@ -201,3 +195,76 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/overtime-requests/{overTimeRequest}/reset-hr-status', [OverTimeRequestsController::class, 'resetHrStatus'])
         ->name('overtime-requests.reset-hr-status');
 });
+
+// Permission Request Routes
+Route::middleware(['auth'])->group(function () {
+    // Basic CRUD routes
+    Route::get('/permission-requests', [PermissionRequestController::class, 'index'])
+        ->name('permission-requests.index');
+
+    Route::post('/permission-requests', [PermissionRequestController::class, 'store'])
+        ->name('permission-requests.store')
+    ;
+
+    Route::put('/permission-requests/{permissionRequest}', [PermissionRequestController::class, 'update'])
+        ->name('permission-requests.update')
+    ;
+
+    Route::delete('/permission-requests/{permissionRequest}', [PermissionRequestController::class, 'destroy'])
+        ->name('permission-requests.destroy')
+    ;
+
+    // Manager Response Routes
+    Route::post('/permission-requests/{permissionRequest}/manager-status', [PermissionRequestController::class, 'updateManagerStatus'])
+        ->name('permission-requests.manager-status');
+
+    Route::post('/permission-requests/{permissionRequest}/modify-manager-status', [PermissionRequestController::class, 'modifyManagerStatus'])
+        ->name('permission-requests.modify-manager-status')
+    ;
+
+    Route::post('/permission-requests/{permissionRequest}/reset-manager-status', [PermissionRequestController::class, 'resetManagerStatus'])
+        ->name('permission-requests.reset-manager-status')
+    ;
+
+    // HR Response Routes
+    Route::post('/permission-requests/{permissionRequest}/hr-status', [PermissionRequestController::class, 'updateHrStatus'])
+        ->name('permission-requests.hr-status');
+
+    Route::post('/permission-requests/{permissionRequest}/modify-hr-status', [PermissionRequestController::class, 'modifyHrStatus'])
+        ->name('permission-requests.modify-hr-status')
+    ;
+
+    Route::post('/permission-requests/{permissionRequest}/reset-hr-status', [PermissionRequestController::class, 'resetHrStatus'])
+        ->name('permission-requests.reset-hr-status')
+    ;
+
+    // Return Status Route
+    Route::patch('/permission-requests/{permissionRequest}/return-status', [PermissionRequestController::class, 'updateReturnStatus'])
+        ->name('permission-requests.return-status');
+
+    // Absence Request Routes
+    Route::middleware(['auth'])->group(function () {
+        // Basic CRUD routes with permissions
+        Route::resource('/absence-requests', AbsenceRequestController::class)
+            ->middleware(['permission:view_absence|create_absence|update_absence|delete_absence']);
+
+        // Manager/HR Response Routes
+        Route::patch('/absence-requests/{absenceRequest}/reset-status', [AbsenceRequestController::class, 'resetStatus'])
+            ->name('absence-requests.reset-status')
+            ->middleware(['permission:hr_respond_absence_request|manager_respond_absence_request']);
+
+        Route::patch('/absence-requests/{id}/modify', [AbsenceRequestController::class, 'modifyResponse'])
+            ->name('absence-requests.modify')
+            ->middleware(['permission:hr_respond_absence_request|manager_respond_absence_request']);
+
+        Route::post('/absence-requests/{absenceRequest}/status', [AbsenceRequestController::class, 'updateStatus'])
+            ->name('absence-requests.updateStatus')
+            ->middleware(['permission:hr_respond_absence_request|manager_respond_absence_request']);
+    });
+});
+
+Route::get('/users/{user}/forbidden-permissions', [UserController::class, 'getForbiddenPermissions'])
+    ->name('users.forbidden-permissions');
+
+Route::get('/roles/{role}/permissions', [UserController::class, 'getRolePermissions'])
+    ->name('roles.permissions');

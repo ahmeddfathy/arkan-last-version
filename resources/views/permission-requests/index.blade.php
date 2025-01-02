@@ -2,691 +2,782 @@
 
 @section('content')
 <link href="{{ asset('css/permission-managment.css') }}" rel="stylesheet">
-<div class="container-fluid py-4">
-    
-
-    @if(Auth::user()->role === 'manager')
-    <div class="card-body ">
-        <form method="GET" action="{{ route('permission-requests.index') }}" class="row g-3">
-            <div class="col-md-4">
-                <label for="employee_name" class="form-label">Search Employee</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-search"></i></span>
-                    <input
-                        type="text"
-                        class="form-control"
-                        id="employee_name"
-                        name="employee_name"
-                        placeholder="Enter employee name..."
-                        value="{{ request('employee_name') }}"
-                        list="employee_names">
-                </div>
-                <datalist id="employee_names">
-                    @foreach($users as $user)
-                    <option value="{{ $user->name }}">
-                        @endforeach
-                </datalist>
-            </div>
-
-
-            <div class="col-md-4">
-                <label for="status" class="form-label">Filter by Status</label>
-                <select class="form-select" id="status" name="status">
-                    <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>All Statuses</option>
-                    <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                    <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                    <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                </select>
-            </div>
-
-            <div class="col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary me-2">
-                    <i class="fas fa-filter me-2"></i>Apply Filters
-                </button>
-                <a href="{{ route('permission-requests.index') }}" class="btn btn-light">
-                    <i class="fas fa-undo me-2"></i>Reset
-                </a>
-            </div>
-        </form>
+<div class="container">
+    @if($errors->any())
+    <div class="alert alert-danger">
+        <ul>
+            @foreach($errors->all() as $error)
+            <li>{{ $error }}</li>
+            @endforeach
+        </ul>
     </div>
     @endif
 
-    <div class="row mt-5">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-gradient-primary text-white border-0 d-flex justify-content-between align-items-center py-3">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-clock fa-lg me-2"></i>
-                        <h5 class="mb-0">Permission Requests</h5>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        @if(Auth::user()->role !== 'manager')
-                        <div class="me-3">
-                            <div class="d-flex align-items-center bg-opacity-25 rounded-pill px-3 py-1" style="background-color: red;">
-                                <i class="fas fa-hourglass-half me-2"></i>
-                                <span>Remaining: {{ $remainingMinutes }} minutes</span>
-                            </div>
-                        </div>
-                        @endif
-                        <button type="button" class="btn btn-light btn-sm d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#createPermissionModal">
-                            <i class="fas fa-plus me-2"></i>
-                            <span>New Request</span>
-                        </button>
-                    </div>
+    @if(session('error'))
+    <div class="alert alert-danger">
+        {{ session('error') }}
+    </div>
+    @endif
+
+    <!-- قسم البحث والفلترة -->
+    @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager', 'hr']))
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ route('permission-requests.index') }}" class="row g-3">
+                <div class="col-md-4">
+                    <label for="employee_name" class="form-label">بحث عن موظف</label>
+                    <input type="text"
+                        class="form-control"
+                        id="employee_name"
+                        name="employee_name"
+                        value="{{ request('employee_name') }}"
+                        placeholder="ادخل اسم الموظف"
+                        list="employee_names">
+
+                    <datalist id="employee_names">
+                        @foreach($users as $user)
+                        <option value="{{ $user->name }}">
+                            @endforeach
+                    </datalist>
                 </div>
 
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th class="border-0">Employee</th>
-                                    <th class="border-0">Date & Time</th>
-                                    <th class="border-0">Duration</th>
-                                    <th class="border-0">Remaining</th>
-                                    <th class="border-0">Reason</th>
-                                    <th class="border-0">Rejected Reason</th>
-                                    <th class="border-0">Status</th>
-                                    <th class="border-0">Return Status</th>
-                                    <th class="border-0">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($requests as $request)
-                                <tr class="request-row">
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="avatar-sm bg-primary bg-opacity-10 rounded-circle me-2 d-flex align-items-center justify-content-center">
-                                                <i class="fas fa-user text-primary"></i>
-                                            </div>
-                                            <div>
-                                                <span class="d-block">{{ $request->user->name ?? 'Unknown' }}</span>
-                                                <small class="text-muted">
-                                                    Remaining: {{ $request->remaining_minutes }} mins
-                                                </small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex flex-column">
-                                            <small class="text-muted">Departure:</small>
-                                            <span>{{ \Carbon\Carbon::parse($request->departure_time)->format('M d, Y H:i') }}</span>
-                                            <small class="text-muted">Return:</small>
-                                            <span>{{ \Carbon\Carbon::parse($request->return_time)->format('M d, Y H:i') }}</span>
-                                        </div>
-                                    </td>
-                                    <td>{{ $request->minutes_used }} mins</td>
-                                    <td>{{ $request->remaining_minutes }} mins</td>
-                                    <td>
-                                        <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ $request->reason }}">
-                                            {{ $request->reason }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if($request->status === 'rejected' && $request->rejection_reason)
-                                        <div class="mt-1">
-                                            <small class="text-danger">
-                                                <i class="fas fa-info-circle me-1"></i>
-                                                {{ $request->rejection_reason }}
-                                            </small>
+                <div class="col-md-4">
+                    <label for="status" class="form-label">تصفية حسب الحالة</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">كل الحالات</option>
+                        <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>معلق</option>
+                        <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>موافق عليه</option>
+                        <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>مرفوض</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter me-2"></i>تطبيق الفلتر
+                    </button>
+                    <a href="{{ route('permission-requests.index') }}" class="btn btn-secondary ms-2">
+                        <i class="fas fa-undo me-2"></i>إعادة تعيين
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    <!-- جدول طلباتي -->
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock"></i> طلباتي
+                        <small class="ms-2">(الدقائق المتبقية: {{ $myRemainingMinutes }} دقيقة)</small>
+                    </h5>
+                    <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#createPermissionModal">
+                        <i class="fas fa-plus"></i> طلب جديد
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>وقت المغادرة</th>
+                                <th>وقت العودة</th>
+                                <th>المدة</th>
+                                <th>السبب</th>
+                                <th>رد المدير</th>
+                                <th>رد HR</th>
+                                <th>الحالة النهائية</th>
+                                <th>حالة العودة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($myRequests as $request)
+                            <tr class="request-row">
+                                <td>{{ \Carbon\Carbon::parse($request->departure_time)->format('Y-m-d H:i') }}</td>
+                                <td>{{ \Carbon\Carbon::parse($request->return_time)->format('Y-m-d H:i') }}</td>
+                                <td>{{ $request->minutes_used }} دقيقة</td>
+                                <td>{{ $request->reason }}</td>
+                                <td>
+                                    <span class="badge bg-{{ $request->manager_status === 'approved' ? 'success' : ($request->manager_status === 'rejected' ? 'danger' : 'warning') }}">
+                                        {{ $request->manager_status === 'approved' ? 'موافق' : ($request->manager_status === 'rejected' ? 'مرفوض' : 'معلق') }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ $request->hr_status === 'approved' ? 'success' : ($request->hr_status === 'rejected' ? 'danger' : 'warning') }}">
+                                        {{ $request->hr_status === 'approved' ? 'موافق' : ($request->hr_status === 'rejected' ? 'مرفوض' : 'معلق') }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ $request->status === 'approved' ? 'success' : ($request->status === 'rejected' ? 'danger' : 'warning') }}">
+                                        {{ $request->status === 'approved' ? 'موافق' : ($request->status === 'rejected' ? 'مرفوض' : 'معلق') }}
+                                    </span>
+                                </td>
+                                <td>{{ $request->getReturnStatusLabel() }}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        @if($request->status === 'pending')
+                                        <button class="btn btn-sm btn-warning edit-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editPermissionModal"
+                                            data-id="{{ $request->id }}"
+                                            data-departure="{{ $request->departure_time }}"
+                                            data-return="{{ $request->return_time }}"
+                                            data-reason="{{ $request->reason }}">
+                                            <i class="fas fa-edit"></i> تعديل
+                                        </button>
+
+                                        <form action="{{ route('permission-requests.destroy', $request) }}"
+                                            method="POST"
+                                            class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                class="btn btn-sm btn-danger"
+                                                onclick="return confirm('هل أنت متأكد من الحذف؟')">
+                                                <i class="fas fa-trash"></i> حذف
+                                            </button>
+                                        </form>
+                                        @endif
+
+                                        @if(!Auth::user()->hasRole('employee') && $request->status === 'approved')
+                                        <div class="violation-buttons">
+                                            <button class="btn violation-btn btn-success"
+                                                onclick="updateReturnStatus('{{ $request->id }}', 1)"
+                                                {{ $request->returned_on_time === 1 ? 'disabled' : '' }}>
+                                                <i class="fas fa-check"></i> عاد
+                                            </button>
+                                            <button class="btn violation-btn btn-danger"
+                                                onclick="updateReturnStatus('{{ $request->id }}', 2)"
+                                                {{ $request->returned_on_time === 2 ? 'disabled' : '' }}>
+                                                <i class="fas fa-times"></i> لم يعد
+                                            </button>
+                                            <button class="btn violation-btn btn-secondary"
+                                                onclick="updateReturnStatus('{{ $request->id }}', 0)"
+                                                {{ $request->returned_on_time === 0 ? 'disabled' : '' }}>
+                                                <i class="fas fa-undo"></i> ريست
+                                            </button>
                                         </div>
                                         @endif
-                                    </td>
-                                    <td>
-                                        @php
-                                        $statusClass = [
-                                        'pending' => 'bg-warning',
-                                        'approved' => 'bg-success',
-                                        'rejected' => 'bg-danger'
-                                        ][$request->status] ?? 'bg-secondary';
-                                        @endphp
-                                        <span class="badge {{ $statusClass }}">
-                                            {{ ucfirst($request->status) }}
-                                        </span>
-                                    </td>
-                                    @if($request->status === 'approved')
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <input type="radio"
-                                                class="btn-check return-status"
-                                                name="return_status_{{ $request->id }}"
-                                                id="return_ontime_{{ $request->id }}"
-                                                value="1"
-                                                {{ $request->returned_on_time === 1 ? 'checked' : '' }}
-                                                data-request-id="{{ $request->id }}">
-                                            <label class="btn btn-outline-success btn-sm" for="return_ontime_{{ $request->id }}">
-                                                <i class="fas fa-check me-1"></i>On Time
-                                            </label>
-
-                                            <input type="radio"
-                                                class="btn-check return-status"
-                                                name="return_status_{{ $request->id }}"
-                                                id="return_late_{{ $request->id }}"
-                                                value="2"
-                                                {{ $request->returned_on_time === 2 ? 'checked' : '' }}
-                                                data-request-id="{{ $request->id }}">
-                                            <label class="btn btn-outline-danger btn-sm" for="return_late_{{ $request->id }}">
-                                                <i class="fas fa-times me-1"></i>Late
-                                            </label>
-
-                                            <input type="radio"
-                                                class="btn-check return-status"
-                                                name="return_status_{{ $request->id }}"
-                                                id="return_reset_{{ $request->id }}"
-                                                value="0"
-                                                {{ $request->returned_on_time === 0 ? 'checked' : '' }}
-                                                data-request-id="{{ $request->id }}">
-                                            <label class="btn btn-outline-secondary btn-sm" for="return_reset_{{ $request->id }}">
-                                                <i class="fas fa-undo me-1"></i>Reset
-                                            </label>
-                                        </div>
-                                    </td>
-                                    @else
-                                    <td>
-                                        <span class="badge bg-secondary">N/A</span>
-                                    </td>
-                                    @endif
-
-                                    <td>
-                                        <div class="btn-group">
-                                            @if($request->status === 'pending')
-                                            @if(Auth::user()->id === $request->user_id)
-                                            <button class="btn btn-sm btn-outline-primary edit-btn"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#editPermissionModal"
-                                                data-id="{{ $request->id }}"
-                                                data-departure="{{ $request->departure_time }}"
-                                                data-return="{{ $request->return_time }}"
-                                                data-reason="{{ $request->reason }}">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <form action="{{ route('permission-requests.destroy', $request) }}"
-                                                method="POST"
-                                                class="d-inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                    class="btn btn-sm btn-outline-danger"
-                                                    onclick="return confirm('Are you sure you want to delete this request?')">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                            @endif
-                                            @if(Auth::user()->role === 'manager')
-                                            <button class="btn btn-sm btn-outline-info respond-btn"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#respondModal"
-                                                data-request-id="{{ $request->id }}">
-                                                <i class="fas fa-reply me-1"></i> Respond
-                                            </button>
-                                            @endif
-                                            @endif
-                                            @if(Auth::user()->role === 'manager' && $request->status !== 'pending')
-                                            <div class="btn-group">
-                                                <button class="btn btn-sm btn-outline-warning modify-response-btn"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#modifyResponseModal"
-                                                    data-request-id="{{ $request->id }}"
-                                                    data-status="{{ $request->status }}"
-                                                    data-reason="{{ $request->rejection_reason }}">
-                                                    <i class="fas fa-edit me-1"></i> Modify
-                                                </button>
-                                                <form action="{{ route('permission-requests.reset-status', $request) }}"
-                                                    method="POST"
-                                                    class="d-inline">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <button type="submit"
-                                                        class="btn btn-sm btn-outline-secondary"
-                                                        onclick="return confirm('Reset this request to pending status?')">
-                                                        <i class="fas fa-undo"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                            @endif
-                                        </div>
-                                    </td>
-
-
-                                </tr>
-                                @empty
-                                <tr>
-                                    <td colspan="8" class="text-center py-4 text-muted">
-                                        <i class="fas fa-inbox fa-2x mb-3"></i>
-                                        <p class="mb-0">No permission requests found</p>
-                                    </td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="d-flex justify-content-end mt-3">
-                        {{ $requests->links() }}
-                    </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="9" class="text-center">لا توجد طلبات استئذان</td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                    {{ $myRequests->links() }}
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Create Modal -->
-<div class="modal fade" id="createPermissionModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form action="{{ route('permission-requests.store') }}" method="POST" id="createPermissionForm">
-                @csrf
-                <div class="modal-header border-0">
-                    <h5 class="modal-title">New Permission Request</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <!-- جدول طلبات الفريق -->
+    @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager', 'hr']))
+    <div class="row justify-content-center">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users"></i> طلبات الفريق
+                    </h5>
                 </div>
-                <div class="modal-body">
-                    @if(Auth::user()->role === 'manager')
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Request Type</label>
-                        <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="registration_type" id="self_registration" value="self" checked>
-                            <label class="btn btn-outline-primary" for="self_registration">
-                                <i class="fas fa-user me-2"></i>For Myself
-                            </label>
 
-                            <input type="radio" class="btn-check" name="registration_type" id="other_registration" value="other">
-                            <label class="btn btn-outline-primary" for="other_registration">
-                                <i class="fas fa-users me-2"></i>For Employee
-                            </label>
-                        </div>
-                    </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>الموظف</th>
+                                <th>وقت المغادرة</th>
+                                <th>وقت العودة</th>
+                                <th>المدة</th>
+                                <th>الدقائق المتبقية</th>
+                                <th>السبب</th>
+                                <th>رد المدير</th>
+                                <th>سبب رفض المدير</th>
+                                <th>رد HR</th>
+                                <th>سبب رفض HR</th>
+                                <th>الحالة النهائية</th>
+                                <th>حالة العودة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($teamRequests as $request)
+                            <tr class="request-row">
+                                <!-- بيانات الطلب -->
+                                <td>{{ $request->user->name }}</td>
+                                <td>{{ \Carbon\Carbon::parse($request->departure_time)->format('Y-m-d H:i') }}</td>
+                                <td>{{ \Carbon\Carbon::parse($request->return_time)->format('Y-m-d H:i') }}</td>
+                                <td>{{ $request->minutes_used }} دقيقة</td>
+                                <td>{{ $remainingMinutes[$request->user_id] ?? 0 }} دقيقة</td>
+                                <td>{{ $request->reason }}</td>
+                                <td>
+                                    <span class="badge bg-{{ $request->manager_status === 'approved' ? 'success' : ($request->manager_status === 'rejected' ? 'danger' : 'warning') }}">
+                                        {{ $request->manager_status === 'approved' ? 'موافق' : ($request->manager_status === 'rejected' ? 'مرفوض' : 'معلق') }}
+                                    </span>
+                                </td>
+                                <td>{{ $request->manager_rejection_reason ?? '-' }}</td>
+                                <td>
+                                    <span class="badge bg-{{ $request->hr_status === 'approved' ? 'success' : ($request->hr_status === 'rejected' ? 'danger' : 'warning') }}">
+                                        {{ $request->hr_status === 'approved' ? 'موافق' : ($request->hr_status === 'rejected' ? 'مرفوض' : 'معلق') }}
+                                    </span>
+                                </td>
+                                <td>{{ $request->hr_rejection_reason ?? '-' }}</td>
+                                <td>
+                                    <span class="badge bg-{{ $request->status === 'approved' ? 'success' : ($request->status === 'rejected' ? 'danger' : 'warning') }}">
+                                        {{ $request->status === 'approved' ? 'موافق' : ($request->status === 'rejected' ? 'مرفوض' : 'معلق') }}
+                                    </span>
+                                </td>
+                                <td>{{ $request->getReturnStatusLabel() }}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <!-- أزرار الرد للمدراء و HR -->
+                                        @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager']) && $request->user->teams()->exists())
+                                        @if($request->manager_status === 'pending')
+                                        <button class="btn btn-sm btn-info respond-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#respondModal"
+                                            data-request-id="{{ $request->id }}"
+                                            data-response-type="manager">
+                                            <i class="fas fa-reply"></i> رد المدير
+                                        </button>
+                                        @else
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-warning modify-response-btn"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#modifyResponseModal"
+                                                data-request-id="{{ $request->id }}"
+                                                data-response-type="manager"
+                                                data-status="{{ $request->manager_status }}"
+                                                data-reason="{{ $request->manager_rejection_reason }}">
+                                                <i class="fas fa-edit"></i> تعديل الرد
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-secondary"
+                                                onclick="resetStatus('{{ $request->id }}', 'manager')">
+                                                <i class="fas fa-undo"></i> إعادة تعيين
+                                            </button>
+                                        </div>
+                                        @endif
+                                        @endif
 
-                    <div class="mb-4" id="employee_select_container" style="display: none;">
-                        <label for="user_id" class="form-label">Select Employee</label>
-                        <select name="user_id" id="user_id" class="form-select">
-                            <option value="" disabled selected>Choose an employee...</option>
-                            @foreach($users as $user)
-                            <option value="{{ $user->id }}">{{ $user->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                                        @if(Auth::user()->hasRole('hr'))
+                                        @if($request->hr_status === 'pending')
+                                        <button class="btn btn-sm btn-info respond-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#respondModal"
+                                            data-request-id="{{ $request->id }}"
+                                            data-response-type="hr">
+                                            <i class="fas fa-reply"></i> رد HR
+                                        </button>
+                                        @else
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-warning modify-response-btn"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#modifyResponseModal"
+                                                data-request-id="{{ $request->id }}"
+                                                data-response-type="hr"
+                                                data-status="{{ $request->hr_status }}"
+                                                data-reason="{{ $request->hr_rejection_reason }}">
+                                                <i class="fas fa-edit"></i> تعديل رد HR
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-secondary"
+                                                onclick="resetStatus('{{ $request->id }}', 'hr')">
+                                                <i class="fas fa-undo"></i> إعادة تعيين
+                                            </button>
+                                        </div>
+                                        @endif
+                                        @endif
+
+                                        <!-- أزرار المخالفات -->
+                                        @if(!Auth::user()->hasRole('employee') && $request->status === 'approved')
+                                        <div class="violation-buttons">
+                                            <button class="btn violation-btn btn-success"
+                                                onclick="updateReturnStatus('{{ $request->id }}', 1)"
+                                                {{ $request->returned_on_time === 1 ? 'disabled' : '' }}>
+                                                <i class="fas fa-check"></i> عاد
+                                            </button>
+                                            <button class="btn violation-btn btn-danger"
+                                                onclick="updateReturnStatus('{{ $request->id }}', 2)"
+                                                {{ $request->returned_on_time === 2 ? 'disabled' : '' }}>
+                                                <i class="fas fa-times"></i> لم يعد
+                                            </button>
+                                            <button class="btn violation-btn btn-secondary"
+                                                onclick="updateReturnStatus('{{ $request->id }}', 0)"
+                                                {{ $request->returned_on_time === 0 ? 'disabled' : '' }}>
+                                                <i class="fas fa-undo"></i> ريست
+                                            </button>
+                                        </div>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="13" class="text-center">لا توجد طلبات استئذان</td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                    {{ $teamRequests->links() }}
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- جدول طلبات الموظفين بدون فريق (لل HR فقط) -->
+    @if(Auth::user()->hasRole('hr'))
+    <div class="row justify-content-center mt-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users"></i> طلبات الموظفين بدون فريق
+                    </h5>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>الموظف</th>
+                                <th>وقت المغادرة</th>
+                                <th>وقت العودة</th>
+                                <th>المدة</th>
+                                <th>الدقائق المتبقية</th>
+                                <th>السبب</th>
+                                <th>رد المدير</th>
+                                <th>سبب رفض المدير</th>
+                                <th>رد HR</th>
+                                <th>سبب رفض HR</th>
+                                <th>الحالة النهائية</th>
+                                <th>حالة العودة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($noTeamRequests ?? [] as $request)
+                            <tr class="request-row">
+                                <td>{{ $request->user->name }}</td>
+                                <td>{{ \Carbon\Carbon::parse($request->departure_time)->format('Y-m-d H:i') }}</td>
+                                <td>{{ \Carbon\Carbon::parse($request->return_time)->format('Y-m-d H:i') }}</td>
+                                <td>{{ $request->minutes_used }} دقيقة</td>
+                                <td>{{ $noTeamRemainingMinutes[$request->user_id] ?? 0 }} دقيقة</td>
+                                <td>{{ $request->reason }}</td>
+                                <td>
+                                    <span class="badge bg-{{ $request->manager_status === 'approved' ? 'success' : ($request->manager_status === 'rejected' ? 'danger' : 'warning') }}">
+                                        {{ $request->manager_status === 'approved' ? 'موافق' : ($request->manager_status === 'rejected' ? 'مرفوض' : 'معلق') }}
+                                    </span>
+                                </td>
+                                <td>{{ $request->manager_rejection_reason ?? '-' }}</td>
+                                <td>
+                                    <span class="badge bg-{{ $request->hr_status === 'approved' ? 'success' : ($request->hr_status === 'rejected' ? 'danger' : 'warning') }}">
+                                        {{ $request->hr_status === 'approved' ? 'موافق' : ($request->hr_status === 'rejected' ? 'مرفوض' : 'معلق') }}
+                                    </span>
+                                </td>
+                                <td>{{ $request->hr_rejection_reason ?? '-' }}</td>
+                                <td>
+                                    <span class="badge bg-{{ $request->status === 'approved' ? 'success' : ($request->status === 'rejected' ? 'danger' : 'warning') }}">
+                                        {{ $request->status === 'approved' ? 'موافق' : ($request->status === 'rejected' ? 'مرفوض' : 'معلق') }}
+                                    </span>
+                                </td>
+                                <td>{{ $request->getReturnStatusLabel() }}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        @if($request->hr_status === 'pending')
+                                        <button class="btn btn-sm btn-info respond-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#respondModal"
+                                            data-request-id="{{ $request->id }}"
+                                            data-response-type="hr">
+                                            <i class="fas fa-reply"></i> رد HR
+                                        </button>
+                                        @else
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-warning modify-response-btn"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#modifyResponseModal"
+                                                data-request-id="{{ $request->id }}"
+                                                data-response-type="hr"
+                                                data-status="{{ $request->hr_status }}"
+                                                data-reason="{{ $request->hr_rejection_reason }}">
+                                                <i class="fas fa-edit"></i> تعديل رد HR
+                                            </button>
+
+                                            <form action="{{ route('permission-requests.reset-hr-status', $request) }}"
+                                                method="POST"
+                                                class="d-inline">
+                                                @csrf
+                                                <button type="submit"
+                                                    class="btn btn-sm btn-secondary"
+                                                    onclick="return confirm('هل أنت متأكد من إعادة تعيين الرد؟')">
+                                                    <i class="fas fa-undo"></i> إعادة تعيين
+                                                </button>
+                                            </form>
+                                        </div>
+                                        @endif
+
+                                        <!-- أزرار المخالفات -->
+                                        @if(!Auth::user()->hasRole('employee') && $request->status === 'approved')
+                                        <div class="violation-buttons">
+                                            <button class="btn violation-btn btn-success"
+                                                onclick="updateReturnStatus('{{ $request->id }}', 1)"
+                                                {{ $request->returned_on_time === 1 ? 'disabled' : '' }}>
+                                                <i class="fas fa-check"></i> عاد
+                                            </button>
+                                            <button class="btn violation-btn btn-danger"
+                                                onclick="updateReturnStatus('{{ $request->id }}', 2)"
+                                                {{ $request->returned_on_time === 2 ? 'disabled' : '' }}>
+                                                <i class="fas fa-times"></i> لم يعد
+                                            </button>
+                                            <button class="btn violation-btn btn-secondary"
+                                                onclick="updateReturnStatus('{{ $request->id }}', 0)"
+                                                {{ $request->returned_on_time === 0 ? 'disabled' : '' }}>
+                                                <i class="fas fa-undo"></i> ريست
+                                            </button>
+                                        </div>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="13" class="text-center">لا توجد طلبات استئذان</td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                    @if($noTeamRequests instanceof \Illuminate\Pagination\LengthAwarePaginator)
+                    {{ $noTeamRequests->links() }}
                     @endif
-
-                    <div class="mb-3">
-                        <label for="departure_time" class="form-label">Departure Time</label>
-                        <input type="datetime-local"
-                            class="form-control"
-                            id="departure_time"
-                            name="departure_time"
-                            required
-                            min="{{ date('Y-m-d\TH:i') }}">
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="return_time" class="form-label">Return Time</label>
-                        <input type="datetime-local"
-                            class="form-control"
-                            id="return_time"
-                            name="return_time"
-                            required
-                            min="{{ date('Y-m-d\TH:i') }}">
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="reason" class="form-label">Reason</label>
-                        <textarea class="form-control"
-                            id="reason"
-                            name="reason"
-                            required
-                            rows="3"
-                            maxlength="255"></textarea>
-                    </div>
                 </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Submit Request</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
-</div>
+    @endif
 
-<!-- Edit Modal -->
-<div class="modal fade" id="editPermissionModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="editPermissionForm" method="POST">
-                @csrf
-                @method('PUT')
-                <div class="modal-header border-0">
-                    <h5 class="modal-title">Edit Permission Request</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="edit_departure_time" class="form-label">Departure Time</label>
-                        <input type="datetime-local"
-                            class="form-control"
-                            id="edit_departure_time"
-                            name="departure_time"
-                            required
-                            min="{{ date('Y-m-d\TH:i') }}">
+    <!-- Create Modal -->
+    <div class="modal fade" id="createPermissionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{{ route('permission-requests.store') }}" method="POST">
+                    @csrf
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title">طلب استئذان جديد</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="mb-3">
-                        <label for="edit_return_time" class="form-label">Return Time</label>
-                        <input type="datetime-local"
-                            class="form-control"
-                            id="edit_return_time"
-                            name="return_time"
-                            required
-                            min="{{ date('Y-m-d\TH:i') }}">
-                    </div>
-                    <div class="mb-3">
-                        <label for="edit_reason" class="form-label">Reason</label>
-                        <textarea class="form-control"
-                            id="edit_reason"
-                            name="reason"
-                            required
-                            rows="3"
-                            maxlength="255"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update Request</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+                    <div class="modal-body">
+                        @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager']))
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">نوع الطلب</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="registration_type" id="self_registration" value="self" checked>
+                                <label class="btn btn-outline-primary" for="self_registration">
+                                    <i class="fas fa-user me-2"></i>لنفسي
+                                </label>
 
-<!-- Respond Modal -->
-<div class="modal fade" id="respondModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="respondForm" method="POST">
-                @csrf
-                <div class="modal-header border-0">
-                    <h5 class="modal-title">Respond to Request</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Response Status</label>
-                        <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="status" id="status_approved" value="approved" checked>
-                            <label class="btn btn-outline-success" for="status_approved">
-                                <i class="fas fa-check me-2"></i>Approve
-                            </label>
+                                <input type="radio" class="btn-check" name="registration_type" id="other_registration" value="other">
+                                <label class="btn btn-outline-primary" for="other_registration">
+                                    <i class="fas fa-users me-2"></i>لموظف آخر
+                                </label>
+                            </div>
+                        </div>
 
-                            <input type="radio" class="btn-check" name="status" id="status_rejected" value="rejected">
-                            <label class="btn btn-outline-danger" for="status_rejected">
-                                <i class="fas fa-times me-2"></i>Reject
-                            </label>
+                        <div class="mb-4" id="employee_select_container" style="display: none;">
+                            <label for="user_id" class="form-label">اختر الموظف</label>
+                            <select name="user_id" id="user_id" class="form-select">
+                                <option value="" disabled selected>اختر موظف...</option>
+                                @foreach($users as $user)
+                                <option value="{{ $user->id }}">{{ $user->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @endif
+
+                        <div class="mb-3">
+                            <label for="departure_time" class="form-label">وقت المغادرة</label>
+                            <input type="datetime-local"
+                                class="form-control"
+                                id="departure_time"
+                                name="departure_time"
+                                required
+                                min="{{ date('Y-m-d\TH:i') }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="return_time" class="form-label">وقت العودة</label>
+                            <input type="datetime-local"
+                                class="form-control"
+                                id="return_time"
+                                name="return_time"
+                                required
+                                min="{{ date('Y-m-d\TH:i') }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="reason" class="form-label">السبب</label>
+                            <textarea class="form-control"
+                                id="reason"
+                                name="reason"
+                                required
+                                rows="3"
+                                maxlength="255"></textarea>
                         </div>
                     </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">إرسال الطلب</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-                    <div id="rejection_reason_container" style="display: none;">
+    <!-- Edit Modal -->
+    <div class="modal fade" id="editPermissionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="editPermissionForm" method="POST">
+                    @csrf
+                    @method('PUT')
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title">تعديل طلب الاستئذان</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
                         <div class="mb-3">
-                            <label for="rejection_reason" class="form-label required">Rejection Reason</label>
+                            <label for="edit_departure_time" class="form-label">وقت المغادرة</label>
+                            <input type="datetime-local"
+                                class="form-control"
+                                id="edit_departure_time"
+                                name="departure_time"
+                                required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_return_time" class="form-label">وقت العودة</label>
+                            <input type="datetime-local"
+                                class="form-control"
+                                id="edit_return_time"
+                                name="return_time"
+                                required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_reason" class="form-label">السبب</label>
+                            <textarea class="form-control"
+                                id="edit_reason"
+                                name="reason"
+                                required
+                                rows="3"
+                                maxlength="255"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Respond Modal -->
+    <div class="modal fade" id="respondModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="respondForm" method="POST">
+                    @csrf
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title">الرد على الطلب</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="response_type" id="response_type">
+
+                        <div class="mb-3">
+                            <label class="form-label">الحالة</label>
+                            <select class="form-select" id="response_status" name="status" required>
+                                <option value="approved">موافق</option>
+                                <option value="rejected">مرفوض</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="rejection_reason_container" style="display: none;">
+                            <label class="form-label">سبب الرفض</label>
                             <textarea class="form-control"
                                 id="rejection_reason"
                                 name="rejection_reason"
-                                rows="3"
-                                maxlength="255"
-                                placeholder="Please provide a reason for rejection..."></textarea>
-                            <div class="form-text text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
-                                This reason will be visible to the employee
-                            </div>
+                                maxlength="255"></textarea>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Submit Response</button>
-                </div>
-            </form>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">حفظ الرد</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modify Response Modal -->
+    <div class="modal fade" id="modifyResponseModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="modifyResponseForm" method="POST">
+                    @csrf
+                    <input type="hidden" name="response_type" id="modify_response_type">
+
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title">تعديل الرد</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">الحالة</label>
+                            <select class="form-select" id="modify_status" name="status" required>
+                                <option value="approved">موافق</option>
+                                <option value="rejected">مرفوض</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="modify_reason_container" style="display: none;">
+                            <label class="form-label">سبب الرفض</label>
+                            <textarea class="form-control"
+                                id="modify_reason"
+                                name="rejection_reason"
+                                maxlength="255"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
-
-<div class="modal fade" id="modifyResponseModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="modifyResponseForm" method="POST">
-                @csrf
-                @method('PATCH')
-                <div class="modal-header border-0">
-                    <h5 class="modal-title">Modify Response</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-4">
-                        <label class="form-label">Update Status</label>
-                        <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="status" id="modify_status_approved" value="approved">
-                            <label class="btn btn-outline-success" for="modify_status_approved">
-                                <i class="fas fa-check me-2"></i>Approved
-                            </label>
-
-                            <input type="radio" class="btn-check" name="status" id="modify_status_rejected" value="rejected">
-                            <label class="btn btn-outline-danger" for="modify_status_rejected">
-                                <i class="fas fa-times me-2"></i>Rejected
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="mb-3 d-none" id="modify_reason_container">
-                        <label for="modify_reason" class="form-label required">Rejection Reason</label>
-                        <textarea class="form-control"
-                            id="modify_reason"
-                            name="rejection_reason"
-                            rows="3"
-                            maxlength="255"
-                            placeholder="Please provide a reason for rejection..."></textarea>
-                        <div class="form-text text-muted">
-                            <i class="fas fa-info-circle me-1"></i>
-                            This reason is required and will be shown to the employee
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize tooltips
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        const tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
+        // تحريكات GSAP
+        gsap.from(".request-row", {
+            duration: 0.5,
+            opacity: 0,
+            y: 20,
+            stagger: 0.1
         });
 
-        // Handle Edit Button Click
+        // معالجة أحداث التعديل
         document.querySelectorAll('.edit-btn').forEach(button => {
             button.addEventListener('click', function() {
-                // Get data from button attributes
-                const requestId = this.getAttribute('data-id');
-                const departureTime = this.getAttribute('data-departure');
-                const returnTime = this.getAttribute('data-return');
-                const reason = this.getAttribute('data-reason');
+                const requestId = this.dataset.id;
+                const departureTime = this.dataset.departure;
+                const returnTime = this.dataset.return;
+                const reason = this.dataset.reason;
 
-                // Set form action URL
                 const form = document.getElementById('editPermissionForm');
-                form.action = `/permission-requests/${requestId}`;
+                form.action = `{{ url('permission-requests') }}/${requestId}`;
 
-                const formatDateTime = (dateTimeStr) => {
-
-                    const date = new Date(dateTimeStr);
-
-
-                    const localDateTime = new Date(date.toLocaleString('en-US', {
-                        timeZone: 'Africa/Cairo'
-                    }));
-
-
-                    const year = localDateTime.getFullYear();
-                    const month = String(localDateTime.getMonth() + 1).padStart(2, '0');
-                    const day = String(localDateTime.getDate()).padStart(2, '0');
-                    const hours = String(localDateTime.getHours()).padStart(2, '0');
-                    const minutes = String(localDateTime.getMinutes()).padStart(2, '0');
-
-                    return `${year}-${month}-${day}T${hours}:${minutes}`;
-                };
-                // Populate form fields
                 document.getElementById('edit_departure_time').value = formatDateTime(departureTime);
                 document.getElementById('edit_return_time').value = formatDateTime(returnTime);
                 document.getElementById('edit_reason').value = reason;
             });
         });
 
-        // Handle status radio changes for both respond and modify modals
-        ['status', 'modify_status'].forEach(prefix => {
-            document.querySelectorAll(`input[name="${prefix}"]`).forEach(radio => {
-                radio.addEventListener('change', function() {
-                    const containerId = `${prefix === 'status' ? 'rejection' : 'modify'}_reason_container`;
-                    const container = document.getElementById(containerId);
-                    const textarea = container.querySelector('textarea');
-
-                    if (this.value === 'rejected') {
-                        container.style.display = 'block';
-                        textarea.setAttribute('required', 'required');
-                    } else {
-                        container.style.display = 'none';
-                        textarea.removeAttribute('required');
-                        textarea.value = '';
-                    }
-                });
-            });
-        });
-
-        // Handle respond button clicks
+        // معالجة أحداث الرد
         document.querySelectorAll('.respond-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const requestId = this.dataset.requestId;
+                const responseType = this.dataset.responseType;
                 const form = document.getElementById('respondForm');
-                form.action = `/permission-requests/${requestId}/update-status`;
 
-                // Reset form
+                // تحديث مسار النموذج حسب نوع الرد
+                const route = responseType === 'manager' ?
+                    `{{ url('permission-requests') }}/${requestId}/manager-status` :
+                    `{{ url('permission-requests') }}/${requestId}/hr-status`;
+
+                form.action = route;
+                document.getElementById('response_type').value = responseType;
+
+                // إعادة تعيين النموذج
                 form.reset();
                 document.getElementById('rejection_reason_container').style.display = 'none';
                 document.getElementById('rejection_reason').removeAttribute('required');
             });
         });
 
-        // Handle modify response button clicks
-        // Handle modify response button clicks
+        // معالجة أحداث تعديل الرد
         document.querySelectorAll('.modify-response-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const requestId = this.dataset.requestId;
+                const responseType = this.dataset.responseType;
                 const status = this.dataset.status;
                 const reason = this.dataset.reason;
-
                 const form = document.getElementById('modifyResponseForm');
-                form.action = `/permission-requests/${requestId}/modify`;
 
-                // Set the correct radio button
-                document.getElementById(`modify_status_${status}`).checked = true;
+                // تحديث مسار النموذج حسب نوع الرد
+                const route = responseType === 'manager' ?
+                    `{{ url('permission-requests') }}/${requestId}/modify-manager-status` :
+                    `{{ url('permission-requests') }}/${requestId}/modify-hr-status`;
 
-                // Show/hide rejection reason based on status
-                const container = document.getElementById('modify_reason_container');
-                const textarea = document.getElementById('modify_reason');
+                form.action = route;
+                document.getElementById('modify_response_type').value = responseType;
+                document.getElementById('modify_status').value = status;
+                document.getElementById('modify_reason').value = reason || '';
 
-                if (status === 'rejected') {
-                    container.classList.remove('d-none');
-                    textarea.setAttribute('required', 'required');
-                    textarea.value = reason || '';
-                } else {
-                    container.classList.add('d-none');
-                    textarea.removeAttribute('required');
-                    textarea.value = '';
-                }
+                toggleRejectionReason('modify_status', 'modify_reason_container', 'modify_reason');
             });
         });
 
-        // Handle status change in modify response modal
-        document.querySelectorAll('input[name="status"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                const container = document.getElementById('modify_reason_container');
-                const textarea = document.getElementById('modify_reason');
-
-                if (this.value === 'rejected') {
-                    container.classList.remove('d-none');
-                    textarea.setAttribute('required', 'required');
-                } else {
-                    container.classList.add('d-none');
-                    textarea.removeAttribute('required');
-                    textarea.value = '';
-                }
+        // معالجة تغيير الحالة
+        ['response_status', 'modify_status'].forEach(id => {
+            document.getElementById(id).addEventListener('change', function() {
+                const containerId = id === 'response_status' ? 'rejection_reason_container' : 'modify_reason_container';
+                const textareaId = id === 'response_status' ? 'rejection_reason' : 'modify_reason';
+                toggleRejectionReason(id, containerId, textareaId);
             });
         });
-        // Handle employee selection for manager requests
+
+        // معالجة نوع التسجيل
         if (document.getElementById('self_registration')) {
             document.querySelectorAll('input[name="registration_type"]').forEach(radio => {
                 radio.addEventListener('change', function() {
-                    const userSelect = document.getElementById('user_id');
                     const container = document.getElementById('employee_select_container');
-
-                    if (this.value === 'self') {
-                        container.style.display = 'none';
-                        userSelect.value = '';
-                    } else {
-                        container.style.display = 'block';
-                        userSelect.value = '';
-                    }
+                    container.style.display = this.value === 'self' ? 'none' : 'block';
                 });
             });
         }
 
-        // Initialize form validation
-        document.querySelectorAll('.modal form').forEach(form => {
-            form.addEventListener('submit', function(event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                }
-                form.classList.add('was-validated');
-            });
-        });
+        // دالة مساعدة لتنسيق التاريخ والوقت
+        function formatDateTime(dateTimeStr) {
+            const date = new Date(dateTimeStr);
+            return date.toISOString().slice(0, 16);
+        }
 
-        document.querySelectorAll('.return-status').forEach(radio => {
-            radio.addEventListener('change', function() {
-                const requestId = this.dataset.requestId;
-                const status = this.value;
+        // دالة مساعدة لإظهار/إخفاء حقل سبب الرفض
+        function toggleRejectionReason(selectId, containerId, textareaId) {
+            const select = document.getElementById(selectId);
+            const container = document.getElementById(containerId);
+            const textarea = document.getElementById(textareaId);
 
-                // Create and submit form
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/permission-requests/${requestId}/return-status`;
-
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-                const methodInput = document.createElement('input');
-                methodInput.type = 'hidden';
-                methodInput.name = '_method';
-                methodInput.value = 'PATCH';
-
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = '_token';
-                csrfInput.value = csrfToken;
-
-                const statusInput = document.createElement('input');
-                statusInput.type = 'hidden';
-                statusInput.name = 'return_status';
-                statusInput.value = status;
-
-                form.appendChild(methodInput);
-                form.appendChild(csrfInput);
-                form.appendChild(statusInput);
-                document.body.appendChild(form);
-                form.submit();
-            });
-        });
+            if (select.value === 'rejected') {
+                container.style.display = 'block';
+                textarea.required = true;
+            } else {
+                container.style.display = 'none';
+                textarea.required = false;
+                textarea.value = '';
+            }
+        }
     });
 </script>
 @endpush
+
 @endsection

@@ -1,240 +1,335 @@
+.modal-content {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
 
-    .modal-content {
-        border: none;
-        border-radius: 1rem;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    }
+.modal-header {
+    background: linear-gradient(135deg, #70c8e8, #5ab1d9);
+    border-radius: 1rem 1rem 0 0;
+    padding: 1.5rem;
+}
 
-    .modal-header {
-        background: linear-gradient(135deg, #70C8E8, #5AB1D9);
-        border-radius: 1rem 1rem 0 0;
-        padding: 1.5rem;
-    }
+.modal-header .modal-title {
+    color: white;
+    font-weight: 500;
+}
 
-    .modal-header .modal-title {
-        color: white;
-        font-weight: 500;
-    }
+.modal-header .btn-close {
+    color: white;
+    opacity: 1;
+}
 
-    .modal-header .btn-close {
-        color: white;
-        opacity: 1;
-    }
+.form-label {
+    color: #333333;
+    font-weight: 500;
+}
 
-    .form-label {
-        color: #333333;
-        font-weight: 500;
-    }
+.form-control:focus {
+    border-color: #70c8e8;
+    box-shadow: 0 0 0 0.2rem rgba(112, 200, 232, 0.25);
+}
 
-    .form-control:focus {
-        border-color: #70C8E8;
-        box-shadow: 0 0 0 0.2rem rgba(112, 200, 232, 0.25);
-    }
+.btn-primary {
+    background: linear-gradient(135deg, #70c8e8, #5ab1d9);
+    border: none;
+}
 
-    .btn-primary {
-        background: linear-gradient(135deg, #70C8E8, #5AB1D9);
-        border: none;
-    }
+.btn-primary:hover {
+    background: linear-gradient(135deg, #5ab1d9, #4597bf);
+}
 
-    .btn-primary:hover {
-        background: linear-gradient(135deg, #5AB1D9, #4597BF);
-    }
+.btn-light {
+    background: #f8fbfd;
+    border: 1px solid #e9eef2;
+}
 
-    .btn-light {
-        background: #F8FBFD;
-        border: 1px solid #E9EEF2;
-    }
+.pagination .page-link {
+    color: #70c8e8;
+}
 
-    .pagination .page-link {
-        color: #70C8E8;
-    }
+.pagination .page-item.active .page-link {
+    background-color: #70c8e8;
+    border-color: #70c8e8;
+}
 
-    .pagination .page-item.active .page-link {
-        background-color: #70C8E8;
-        border-color: #70C8E8;
-    }
+/* Status badges with softer colors */
+.badge.bg-pending {
+    background-color: #fff5e6 !important;
+    color: #ffa040 !important;
+}
 
+.badge.bg-approved {
+    background-color: #e8f5e9 !important;
+    color: #43a047 !important;
+}
 
-    /* Status badges with softer colors */
-    .badge.bg-pending {
-        background-color: #fff5e6 !important;
-        color: #ffa040 !important;
-    }
+.badge.bg-rejected {
+    background-color: #ffebee !important;
+    color: #e53935 !important;
+}
 
-    .badge.bg-approved {
-        background-color: #e8f5e9 !important;
-        color: #43a047 !important;
-    }
+/* Softer highlight colors for hover states */
 
-    .badge.bg-rejected {
-        background-color: #ffebee !important;
-        color: #e53935 !important;
-    }
+/* Header section with gradient */
+.page-header {
+    background: linear-gradient(to right, #f8fbfd, #ffffff);
+    border-bottom: 1px solid #edf2f7;
+}
 
-    /* Softer highlight colors for hover states */
+/* Duration and Remaining columns with soft background */
 
+/* Action buttons with softer colors */
+.btn-respond {
+    background-color: #5b93a5;
+    border-color: #5b93a5;
+    color: white;
+}
 
-    /* Header section with gradient */
-    .page-header {
-        background: linear-gradient(to right, #f8fbfd, #ffffff);
-        border-bottom: 1px solid #edf2f7;
-    }
+.btn-respond:hover {
+    background-color: #4a7d8c;
+    border-color: #4a7d8c;
+}
 
-    /* Duration and Remaining columns with soft background */
+/* Permission Requests header */
+.permission-header {
+    background: linear-gradient(to right, #5b93a5, #6ba7b9);
+    color: white;
+    padding: 15px;
+    border-radius: 8px 8px 0 0;
+}
 
+:root {
+    --primary-blue: #55b7e5;
+    --primary-dark: #333333;
+    --hover-blue: #4aa6d4;
+    --light-blue: #e6f4fa;
+    --border-color: #e5e7eb;
+}
 
-    /* Action buttons with softer colors */
-    .btn-respond {
-        background-color: #5b93a5;
-        border-color: #5b93a5;
-        color: white;
-    }
+/* Container and Card Styling */
+.container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 1rem;
+}
 
-    .btn-respond:hover {
-        background-color: #4a7d8c;
-        border-color: #4a7d8c;
-    }
+.card {
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    width: 100%;
+    opacity: 1 !important;
+}
 
+.card:hover {
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
 
+.card-header {
+    background-color: var(--primary-blue) !important;
+    border-bottom: none;
+    padding: 1rem 1.5rem;
+}
 
-    /* Permission Requests header */
-    .permission-header {
-        background: linear-gradient(to right, #5b93a5, #6ba7b9);
-        color: white;
-        padding: 15px;
-        border-radius: 8px 8px 0 0;
-    }
+.card-body {
+    padding: 0; /* Remove padding from card body */
+}
 
+/* Table Container */
+.table-responsive {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
 
-    :root {
-        --primary-blue: #55B7E5;
-        --primary-dark: #333333;
-        --hover-blue: #4aa6d4;
-        --light-blue: #e6f4fa;
-        --border-color: #e5e7eb;
-    }
+/* Table Styling */
+.table {
+    width: 100% !important;
+    margin-bottom: 0;
+    border-collapse: collapse;
+}
 
-    /* Container and Card Styling */
+.table thead th {
+    background-color: var(--light-blue);
+    color: var(--primary-dark);
+    border-bottom: 2px solid var(--primary-blue);
+    padding: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.table tbody tr {
+    transition: background-color 0.3s ease;
+}
+
+.table tbody tr:hover {
+    background-color: var(--light-blue);
+}
+
+.table td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+/* Make sure all table cells take appropriate space */
+.table th,
+.table td {
+    min-width: max-content;
+}
+
+/* Column specific widths */
+.table th:nth-child(1),
+.table td:nth-child(1) {
+    /* Name column */
+    min-width: 150px;
+}
+
+.table th:nth-child(2),
+.table td:nth-child(2) {
+    /* Date column */
+    min-width: 120px;
+}
+
+.table th:nth-child(3),
+.table td:nth-child(3),
+.table th:nth-child(4),
+.table td:nth-child(4) {
+    /* Time columns */
+    min-width: 100px;
+}
+
+.table th:nth-child(5),
+.table td:nth-child(5) {
+    /* Reason column */
+    min-width: 200px;
+}
+
+.table th:nth-child(6),
+.table td:nth-child(6) {
+    /* Status column */
+    min-width: 100px;
+}
+
+.table th:nth-child(7),
+.table td:nth-child(7) {
+    /* Rejection Reason column */
+    min-width: 200px;
+}
+
+.table th:nth-child(8),
+.table td:nth-child(8) {
+    /* Actions column */
+    min-width: 150px;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
     .container {
-        width: 100%;
-        max-width: 100%;
-        padding: 0 1rem;
-    }
-
-    .card {
-        border: none;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-        width: 100%;
-        opacity: 1 !important;
-    }
-
-    .card:hover {
-        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        padding: 0 0.5rem;
     }
 
     .card-header {
-        background-color: var(--primary-blue) !important;
-        border-bottom: none;
-        padding: 1rem 1.5rem;
+        padding: 0.75rem 1rem;
     }
 
-    .card-body {
-        padding: 0; /* Remove padding from card body */
-    }
-
-    /* Table Container */
     .table-responsive {
-        width: 100%;
-        margin: 0;
-        padding: 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
-    /* Table Styling */
     .table {
-        width: 100% !important;
-        margin-bottom: 0;
-        border-collapse: collapse;
+        min-width: 1000px; /* Ensure minimum width for scrollable content */
     }
 
-    .table thead th {
-        background-color: var(--light-blue);
-        color: var(--primary-dark);
-        border-bottom: 2px solid var(--primary-blue);
-        padding: 1rem;
-        font-weight: 600;
-        white-space: nowrap;
+    .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.875rem;
     }
+}
 
-    .table tbody tr {
-        transition: background-color 0.3s ease;
-    }
+/* Violation Buttons Group */
+.violation-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
 
-    .table tbody tr:hover {
-        background-color: var(--light-blue);
-    }
+.violation-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+}
 
-    .table td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
+.violation-btn.btn-success {
+    background-color: #059669;
+    border-color: #059669;
+    color: white;
+}
 
-    /* Make sure all table cells take appropriate space */
-    .table th, .table td {
-        min-width: max-content;
-    }
+.violation-btn.btn-success:hover:not(:disabled) {
+    background-color: #047857;
+    border-color: #047857;
+    transform: translateY(-1px);
+}
 
-    /* Column specific widths */
-    .table th:nth-child(1), .table td:nth-child(1) { /* Name column */
-        min-width: 150px;
-    }
+.violation-btn.btn-danger {
+    background-color: #dc2626;
+    border-color: #dc2626;
+    color: white;
+}
 
-    .table th:nth-child(2), .table td:nth-child(2) { /* Date column */
-        min-width: 120px;
-    }
+.violation-btn.btn-danger:hover:not(:disabled) {
+    background-color: #b91c1c;
+    border-color: #b91c1c;
+    transform: translateY(-1px);
+}
 
-    .table th:nth-child(3), .table td:nth-child(3),
-    .table th:nth-child(4), .table td:nth-child(4) { /* Time columns */
-        min-width: 100px;
-    }
+.violation-btn.btn-secondary {
+    background-color: #6b7280;
+    border-color: #6b7280;
+    color: white;
+}
 
-    .table th:nth-child(5), .table td:nth-child(5) { /* Reason column */
-        min-width: 200px;
-    }
+.violation-btn.btn-secondary:hover:not(:disabled) {
+    background-color: #4b5563;
+    border-color: #4b5563;
+    transform: translateY(-1px);
+}
 
-    .table th:nth-child(6), .table td:nth-child(6) { /* Status column */
-        min-width: 100px;
-    }
+.violation-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
 
-    .table th:nth-child(7), .table td:nth-child(7) { /* Rejection Reason column */
-        min-width: 200px;
-    }
+/* Action Buttons Container */
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
 
-    .table th:nth-child(8), .table td:nth-child(8) { /* Actions column */
-        min-width: 150px;
-        text-align: center;
-    }
+/* Response Buttons Group */
+.response-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
 
-    @media (max-width: 768px) {
-        .container {
-            padding: 0 0.5rem;
-        }
+/* Make buttons in groups equal width */
+.btn-group {
+    display: flex;
+    gap: 0.25rem;
+}
 
-        .card-header {
-            padding: 0.75rem 1rem;
-        }
+.btn-group .btn {
+    flex: 1;
+}
 
-        .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .table {
-            min-width: 1000px; /* Ensure minimum width for scrollable content */
-        }
-
-        .btn {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.875rem;
-        }
-    }
+/* Add divider between button groups */
+.button-divider {
+    width: 100%;
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 0.5rem 0;
+}

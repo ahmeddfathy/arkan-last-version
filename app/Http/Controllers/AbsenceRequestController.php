@@ -22,6 +22,10 @@ class AbsenceRequestController extends Controller
 
     public function index(Request $request)
     {
+        if (!auth()->user()->hasAnyPermission(['view_absence', 'create_absence', 'update_absence', 'delete_absence'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $user = Auth::user();
         $employeeName = $request->input('employee_name');
         $status = $request->input('status');
@@ -165,6 +169,10 @@ class AbsenceRequestController extends Controller
 
     public function store(Request $request)
     {
+        if (!auth()->user()->hasPermissionTo('create_absence')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $user = Auth::user();
 
         if ($user->role !== 'employee' && $user->role !== 'manager') {

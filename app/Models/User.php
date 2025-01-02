@@ -10,7 +10,11 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Jetstream\HasTeams;
 use Laravel\Sanctum\HasApiTokens;
+
 use Spatie\Permission\Traits\HasRoles;
+
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
 
 class User extends Authenticatable
 {
@@ -111,5 +115,36 @@ class User extends Authenticatable
     return $this->belongsToMany(Team::class, 'team_user')
       ->withPivot('role')
       ->withTimestamps();
+  }
+
+  /**
+   * Override hasPermissionTo from HasRoles trait
+   */
+  public function hasPermissionTo($permission, $guardName = null): bool
+  {
+    $permissionName = $permission instanceof Permission ? $permission->name : $permission;
+
+    // التحقق من وجود حظر مباشر للصلاحية
+    $permissionModel = Permission::where('name', $permissionName)->first();
+    if (!$permissionModel) {
+      return false;
+    }
+
+    $forbidden = DB::table('model_has_permissions')
+      ->where([
+        'model_type' => get_class($this),
+        'model_id' => $this->id,
+        'permission_id' => $permissionModel->id,
+        'forbidden' => true
+      ])
+      ->exists();
+
+    if ($forbidden) {
+      return false;
+    }
+
+    // التحقق من الصلاحيات بشكل مباشر
+    return $this->permissions->contains('name', $permissionName) ||
+      $this->roles->flatMap->permissions->contains('name', $permissionName);
   }
 }

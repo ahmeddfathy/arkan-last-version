@@ -7,8 +7,9 @@
 <div class="container">
     @include('shared.alerts')
 
+    <!-- إحصائيات للمدراء و HR -->
+    @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager', 'hr']))
     <div class="row mb-4">
-        @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager', 'hr']))
         <div class="col-md-4">
             <div class="card">
                 <div class="card-body">
@@ -35,26 +36,16 @@
                 </div>
             </div>
         </div>
-        @endif
     </div>
 
-    <div class="card">
+    <!-- جدول طلبات الفريق -->
+    <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <div>
-                <h5 class="mb-0 d-inline-block">Overtime Requests</h5>
-                @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager', 'hr']))
-                <span class="badge bg-primary ms-2">{{ $myOvertimeHours }} hours approved</span>
-                @endif
-            </div>
-            @if($canCreateOvertime)
-            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createOvertimeModal">
-                <i class="fas fa-plus"></i> New Request
-            </button>
-            @endif
+            <h5 class="mb-0">Team Overtime Requests</h5>
+            <span class="badge bg-primary ms-2">{{ $myOvertimeHours }} hours approved</span>
         </div>
-
         <div class="card-body">
-            @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager', 'hr']))
+            <!-- فورم البحث -->
             <form method="GET" action="{{ route('overtime-requests.index') }}" class="row g-3 mb-4">
                 <div class="col-md-3">
                     <input type="text" class="form-control" id="employee_name" name="employee_name"
@@ -73,8 +64,8 @@
                     <a href="{{ route('overtime-requests.index') }}" class="btn btn-secondary">Reset</a>
                 </div>
             </form>
-            @endif
 
+            <!-- جدول طلبات الفريق -->
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
@@ -95,7 +86,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($teamRequests ?? $myRequests as $request)
+                        @forelse($teamRequests as $request)
                         <tr>
                             @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager', 'hr']))
                             <td>{{ $request->user->name }}</td>
@@ -212,17 +203,22 @@
                     </tbody>
                 </table>
             </div>
-
             <div class="d-flex justify-content-center mt-4">
-                {{ ($teamRequests ?? $myRequests)->links() }}
+                {{ $teamRequests->links() }}
             </div>
         </div>
     </div>
+    @endif
 
     <!-- جدول طلباتي -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0">My Requests</h5>
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">My Overtime Requests</h5>
+            @if($canCreateOvertime)
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createOvertimeModal">
+                <i class="fas fa-plus"></i> New Request
+            </button>
+            @endif
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -270,7 +266,7 @@
                             </td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    @if($canUpdateOvertime && $request->canUpdate(Auth::user()))
+                                    @if($request->canUpdate(Auth::user()))
                                     <button type="button" class="btn btn-primary edit-btn"
                                         data-bs-toggle="modal"
                                         data-bs-target="#editOvertimeModal"
@@ -279,7 +275,7 @@
                                     </button>
                                     @endif
 
-                                    @if($canDeleteOvertime && $request->canDelete(Auth::user()))
+                                    @if($request->canDelete(Auth::user()))
                                     <form action="{{ route('overtime-requests.destroy', $request->id) }}"
                                         method="POST"
                                         class="d-inline delete-form">
@@ -295,14 +291,14 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="10" class="text-center">No requests found</td>
+                            <td colspan="10" class="text-center">No overtime requests found</td>
                         </tr>
                         @endforelse
                     </tbody>
                 </table>
-                <div class="d-flex justify-content-center mt-4">
-                    {{ $myRequests->links() }}
-                </div>
+            </div>
+            <div class="d-flex justify-content-center mt-4">
+                {{ $myRequests->links() }}
             </div>
         </div>
     </div>
@@ -362,29 +358,29 @@
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     @if($canRespondAsHR)
-                                        @if($request->hr_status === 'pending')
-                                        <button type="button" class="btn btn-info respond-btn"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#respondOvertimeModal"
-                                            data-request-id="{{ $request->id }}"
-                                            data-response-type="hr">
-                                            <i class="fas fa-reply"></i>
-                                        </button>
-                                        @else
-                                        <button type="button" class="btn btn-warning modify-response-btn"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#modifyResponseModal"
-                                            data-request-id="{{ $request->id }}"
-                                            data-response-type="hr"
-                                            data-current-status="{{ $request->hr_status }}"
-                                            data-current-reason="{{ $request->hr_rejection_reason }}">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-secondary reset-btn"
-                                            onclick="resetStatus('{{ $request->id }}', 'hr')">
-                                            <i class="fas fa-undo"></i>
-                                        </button>
-                                        @endif
+                                    @if($request->hr_status === 'pending')
+                                    <button type="button" class="btn btn-info respond-btn"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#respondOvertimeModal"
+                                        data-request-id="{{ $request->id }}"
+                                        data-response-type="hr">
+                                        <i class="fas fa-reply"></i>
+                                    </button>
+                                    @else
+                                    <button type="button" class="btn btn-warning modify-response-btn"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modifyResponseModal"
+                                        data-request-id="{{ $request->id }}"
+                                        data-response-type="hr"
+                                        data-current-status="{{ $request->hr_status }}"
+                                        data-current-reason="{{ $request->hr_rejection_reason }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-secondary reset-btn"
+                                        onclick="resetStatus('{{ $request->id }}', 'hr')">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                    @endif
                                     @endif
                                 </div>
                             </td>
