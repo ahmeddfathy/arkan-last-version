@@ -223,8 +223,7 @@ Route::middleware(['auth'])->group(function () {
     ;
 
     Route::post('/permission-requests/{permissionRequest}/reset-manager-status', [PermissionRequestController::class, 'resetManagerStatus'])
-        ->name('permission-requests.reset-manager-status')
-    ;
+        ->name('permission-requests.reset-manager-status');
 
     // HR Response Routes
     Route::post('/permission-requests/{permissionRequest}/hr-status', [PermissionRequestController::class, 'updateHrStatus'])
@@ -235,8 +234,7 @@ Route::middleware(['auth'])->group(function () {
     ;
 
     Route::post('/permission-requests/{permissionRequest}/reset-hr-status', [PermissionRequestController::class, 'resetHrStatus'])
-        ->name('permission-requests.reset-hr-status')
-    ;
+        ->name('permission-requests.reset-hr-status');
 
     // Return Status Route
     Route::patch('/permission-requests/{permissionRequest}/return-status', [PermissionRequestController::class, 'updateReturnStatus'])
@@ -268,3 +266,6 @@ Route::get('/users/{user}/forbidden-permissions', [UserController::class, 'getFo
 
 Route::get('/roles/{role}/permissions', [UserController::class, 'getRolePermissions'])
     ->name('roles.permissions');
+
+Route::post('/permission-requests/{permissionRequest}/return-status', [PermissionRequestController::class, 'updateReturnStatus'])
+    ->name('permission-requests.update-return-status');

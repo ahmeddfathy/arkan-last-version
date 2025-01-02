@@ -142,25 +142,7 @@
                                         </form>
                                         @endif
 
-                                        @if(!Auth::user()->hasRole('employee') && $request->status === 'approved')
-                                        <div class="violation-buttons">
-                                            <button class="btn violation-btn btn-success"
-                                                onclick="updateReturnStatus('{{ $request->id }}', 1)"
-                                                {{ $request->returned_on_time === 1 ? 'disabled' : '' }}>
-                                                <i class="fas fa-check"></i> عاد
-                                            </button>
-                                            <button class="btn violation-btn btn-danger"
-                                                onclick="updateReturnStatus('{{ $request->id }}', 2)"
-                                                {{ $request->returned_on_time === 2 ? 'disabled' : '' }}>
-                                                <i class="fas fa-times"></i> لم يعد
-                                            </button>
-                                            <button class="btn violation-btn btn-secondary"
-                                                onclick="updateReturnStatus('{{ $request->id }}', 0)"
-                                                {{ $request->returned_on_time === 0 ? 'disabled' : '' }}>
-                                                <i class="fas fa-undo"></i> ريست
-                                            </button>
-                                        </div>
-                                        @endif
+
                                     </div>
                                 </td>
                             </tr>
@@ -294,28 +276,46 @@
                                         @endif
                                         @endif
 
-                                        <!-- أزرار المخالفات -->
-                                        @if(!Auth::user()->hasRole('employee') && $request->status === 'approved')
-                                        <div class="violation-buttons">
-                                            <button class="btn violation-btn btn-success"
-                                                onclick="updateReturnStatus('{{ $request->id }}', 1)"
-                                                {{ $request->returned_on_time === 1 ? 'disabled' : '' }}>
-                                                <i class="fas fa-check"></i> عاد
-                                            </button>
-                                            <button class="btn violation-btn btn-danger"
-                                                onclick="updateReturnStatus('{{ $request->id }}', 2)"
-                                                {{ $request->returned_on_time === 2 ? 'disabled' : '' }}>
-                                                <i class="fas fa-times"></i> لم يعد
-                                            </button>
-                                            <button class="btn violation-btn btn-secondary"
-                                                onclick="updateReturnStatus('{{ $request->id }}', 0)"
-                                                {{ $request->returned_on_time === 0 ? 'disabled' : '' }}>
-                                                <i class="fas fa-undo"></i> ريست
-                                            </button>
+                                        <!-- أزرار حالة العودة -->
+                                        @if($request->status === 'approved' && (Auth::user()->hasRole('hr') || Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager'])))
+                                        <div class="btn-group" role="group">
+                                            <input type="radio"
+                                                class="btn-check return-status"
+                                                name="return_status_{{ $request->id }}"
+                                                id="return_ontime_{{ $request->id }}"
+                                                value="1"
+                                                {{ $request->returned_on_time === 1 ? 'checked' : '' }}
+                                                data-request-id="{{ $request->id }}">
+                                            <label class="btn btn-outline-success btn-sm" for="return_ontime_{{ $request->id }}">
+                                                <i class="fas fa-check me-1"></i>في الوقت
+                                            </label>
+
+                                            <input type="radio"
+                                                class="btn-check return-status"
+                                                name="return_status_{{ $request->id }}"
+                                                id="return_late_{{ $request->id }}"
+                                                value="2"
+                                                {{ $request->returned_on_time === 2 ? 'checked' : '' }}
+                                                data-request-id="{{ $request->id }}">
+                                            <label class="btn btn-outline-danger btn-sm" for="return_late_{{ $request->id }}">
+                                                <i class="fas fa-times me-1"></i>متأخر
+                                            </label>
+
+                                            <input type="radio"
+                                                class="btn-check return-status"
+                                                name="return_status_{{ $request->id }}"
+                                                id="return_reset_{{ $request->id }}"
+                                                value="0"
+                                                {{ $request->returned_on_time === 0 ? 'checked' : '' }}
+                                                data-request-id="{{ $request->id }}">
+                                            <label class="btn btn-outline-secondary btn-sm" for="return_reset_{{ $request->id }}">
+                                                <i class="fas fa-undo me-1"></i>إعادة تعيين
+                                            </label>
                                         </div>
                                         @endif
                                     </div>
                                 </td>
+
                             </tr>
                             @empty
                             <tr>
@@ -352,8 +352,6 @@
                                 <th>المدة</th>
                                 <th>الدقائق المتبقية</th>
                                 <th>السبب</th>
-                                <th>رد المدير</th>
-                                <th>سبب رفض المدير</th>
                                 <th>رد HR</th>
                                 <th>سبب رفض HR</th>
                                 <th>الحالة النهائية</th>
@@ -370,12 +368,6 @@
                                 <td>{{ $request->minutes_used }} دقيقة</td>
                                 <td>{{ $noTeamRemainingMinutes[$request->user_id] ?? 0 }} دقيقة</td>
                                 <td>{{ $request->reason }}</td>
-                                <td>
-                                    <span class="badge bg-{{ $request->manager_status === 'approved' ? 'success' : ($request->manager_status === 'rejected' ? 'danger' : 'warning') }}">
-                                        {{ $request->manager_status === 'approved' ? 'موافق' : ($request->manager_status === 'rejected' ? 'مرفوض' : 'معلق') }}
-                                    </span>
-                                </td>
-                                <td>{{ $request->manager_rejection_reason ?? '-' }}</td>
                                 <td>
                                     <span class="badge bg-{{ $request->hr_status === 'approved' ? 'success' : ($request->hr_status === 'rejected' ? 'danger' : 'warning') }}">
                                         {{ $request->hr_status === 'approved' ? 'موافق' : ($request->hr_status === 'rejected' ? 'مرفوض' : 'معلق') }}
@@ -423,32 +415,50 @@
                                         </div>
                                         @endif
 
-                                        <!-- أزرار المخالفات -->
-                                        @if(!Auth::user()->hasRole('employee') && $request->status === 'approved')
-                                        <div class="violation-buttons">
-                                            <button class="btn violation-btn btn-success"
-                                                onclick="updateReturnStatus('{{ $request->id }}', 1)"
-                                                {{ $request->returned_on_time === 1 ? 'disabled' : '' }}>
-                                                <i class="fas fa-check"></i> عاد
-                                            </button>
-                                            <button class="btn violation-btn btn-danger"
-                                                onclick="updateReturnStatus('{{ $request->id }}', 2)"
-                                                {{ $request->returned_on_time === 2 ? 'disabled' : '' }}>
-                                                <i class="fas fa-times"></i> لم يعد
-                                            </button>
-                                            <button class="btn violation-btn btn-secondary"
-                                                onclick="updateReturnStatus('{{ $request->id }}', 0)"
-                                                {{ $request->returned_on_time === 0 ? 'disabled' : '' }}>
-                                                <i class="fas fa-undo"></i> ريست
-                                            </button>
+                                        <!-- أزرار حالة العودة -->
+                                        @if($request->status === 'approved')
+                                        <div class="btn-group" role="group">
+                                            <input type="radio"
+                                                class="btn-check return-status"
+                                                name="return_status_{{ $request->id }}"
+                                                id="return_ontime_no_team_{{ $request->id }}"
+                                                value="1"
+                                                {{ $request->returned_on_time === 1 ? 'checked' : '' }}
+                                                data-request-id="{{ $request->id }}">
+                                            <label class="btn btn-outline-success btn-sm" for="return_ontime_no_team_{{ $request->id }}">
+                                                <i class="fas fa-check me-1"></i>في الوقت
+                                            </label>
+
+                                            <input type="radio"
+                                                class="btn-check return-status"
+                                                name="return_status_{{ $request->id }}"
+                                                id="return_late_no_team_{{ $request->id }}"
+                                                value="2"
+                                                {{ $request->returned_on_time === 2 ? 'checked' : '' }}
+                                                data-request-id="{{ $request->id }}">
+                                            <label class="btn btn-outline-danger btn-sm" for="return_late_no_team_{{ $request->id }}">
+                                                <i class="fas fa-times me-1"></i>متأخر
+                                            </label>
+
+                                            <input type="radio"
+                                                class="btn-check return-status"
+                                                name="return_status_{{ $request->id }}"
+                                                id="return_reset_no_team_{{ $request->id }}"
+                                                value="0"
+                                                {{ $request->returned_on_time === 0 ? 'checked' : '' }}
+                                                data-request-id="{{ $request->id }}">
+                                            <label class="btn btn-outline-secondary btn-sm" for="return_reset_no_team_{{ $request->id }}">
+                                                <i class="fas fa-undo me-1"></i>إعادة تعيين
+                                            </label>
                                         </div>
                                         @endif
                                     </div>
                                 </td>
+
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="13" class="text-center">لا توجد طلبات استئذان</td>
+                                <td colspan="11" class="text-center">لا توجد طلبات استئذان</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -460,207 +470,208 @@
             </div>
         </div>
     </div>
-    @endif
+</div>
+@endif
 
-    <!-- Create Modal -->
-    <div class="modal fade" id="createPermissionModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form action="{{ route('permission-requests.store') }}" method="POST">
-                    @csrf
-                    <div class="modal-header border-0">
-                        <h5 class="modal-title">طلب استئذان جديد</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager']))
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">نوع الطلب</label>
-                            <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="registration_type" id="self_registration" value="self" checked>
-                                <label class="btn btn-outline-primary" for="self_registration">
-                                    <i class="fas fa-user me-2"></i>لنفسي
-                                </label>
+<!-- Create Modal -->
+<div class="modal fade" id="createPermissionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ route('permission-requests.store') }}" method="POST">
+                @csrf
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">طلب استئذان جديد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    @if(Auth::user()->hasRole(['team_leader', 'department_manager', 'company_manager']))
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">نوع الطلب</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="registration_type" id="self_registration" value="self" checked>
+                            <label class="btn btn-outline-primary" for="self_registration">
+                                <i class="fas fa-user me-2"></i>لنفسي
+                            </label>
 
-                                <input type="radio" class="btn-check" name="registration_type" id="other_registration" value="other">
-                                <label class="btn btn-outline-primary" for="other_registration">
-                                    <i class="fas fa-users me-2"></i>لموظف آخر
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="mb-4" id="employee_select_container" style="display: none;">
-                            <label for="user_id" class="form-label">اختر الموظف</label>
-                            <select name="user_id" id="user_id" class="form-select">
-                                <option value="" disabled selected>اختر موظف...</option>
-                                @foreach($users as $user)
-                                <option value="{{ $user->id }}">{{ $user->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        @endif
-
-                        <div class="mb-3">
-                            <label for="departure_time" class="form-label">وقت المغادرة</label>
-                            <input type="datetime-local"
-                                class="form-control"
-                                id="departure_time"
-                                name="departure_time"
-                                required
-                                min="{{ date('Y-m-d\TH:i') }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="return_time" class="form-label">وقت العودة</label>
-                            <input type="datetime-local"
-                                class="form-control"
-                                id="return_time"
-                                name="return_time"
-                                required
-                                min="{{ date('Y-m-d\TH:i') }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="reason" class="form-label">السبب</label>
-                            <textarea class="form-control"
-                                id="reason"
-                                name="reason"
-                                required
-                                rows="3"
-                                maxlength="255"></textarea>
+                            <input type="radio" class="btn-check" name="registration_type" id="other_registration" value="other">
+                            <label class="btn btn-outline-primary" for="other_registration">
+                                <i class="fas fa-users me-2"></i>لموظف آخر
+                            </label>
                         </div>
                     </div>
-                    <div class="modal-footer border-0">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="submit" class="btn btn-primary">إرسال الطلب</button>
+
+                    <div class="mb-4" id="employee_select_container" style="display: none;">
+                        <label for="user_id" class="form-label">اختر الموظف</label>
+                        <select name="user_id" id="user_id" class="form-select">
+                            <option value="" disabled selected>اختر موظف...</option>
+                            @foreach($users as $user)
+                            <option value="{{ $user->id }}">{{ $user->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
-                </form>
-            </div>
+                    @endif
+
+                    <div class="mb-3">
+                        <label for="departure_time" class="form-label">وقت المغادرة</label>
+                        <input type="datetime-local"
+                            class="form-control"
+                            id="departure_time"
+                            name="departure_time"
+                            required
+                            min="{{ date('Y-m-d\TH:i') }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="return_time" class="form-label">وقت العودة</label>
+                        <input type="datetime-local"
+                            class="form-control"
+                            id="return_time"
+                            name="return_time"
+                            required
+                            min="{{ date('Y-m-d\TH:i') }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">السبب</label>
+                        <textarea class="form-control"
+                            id="reason"
+                            name="reason"
+                            required
+                            rows="3"
+                            maxlength="255"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">إرسال الطلب</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <!-- Edit Modal -->
-    <div class="modal fade" id="editPermissionModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="editPermissionForm" method="POST">
-                    @csrf
-                    @method('PUT')
-                    <div class="modal-header border-0">
-                        <h5 class="modal-title">تعديل طلب الاستئذان</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- Edit Modal -->
+<div class="modal fade" id="editPermissionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="editPermissionForm" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">تعديل طلب الاستئذان</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_departure_time" class="form-label">وقت المغادرة</label>
+                        <input type="datetime-local"
+                            class="form-control"
+                            id="edit_departure_time"
+                            name="departure_time"
+                            required>
                     </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="edit_departure_time" class="form-label">وقت المغادرة</label>
-                            <input type="datetime-local"
-                                class="form-control"
-                                id="edit_departure_time"
-                                name="departure_time"
-                                required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="edit_return_time" class="form-label">وقت العودة</label>
-                            <input type="datetime-local"
-                                class="form-control"
-                                id="edit_return_time"
-                                name="return_time"
-                                required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="edit_reason" class="form-label">السبب</label>
-                            <textarea class="form-control"
-                                id="edit_reason"
-                                name="reason"
-                                required
-                                rows="3"
-                                maxlength="255"></textarea>
-                        </div>
+                    <div class="mb-3">
+                        <label for="edit_return_time" class="form-label">وقت العودة</label>
+                        <input type="datetime-local"
+                            class="form-control"
+                            id="edit_return_time"
+                            name="return_time"
+                            required>
                     </div>
-                    <div class="modal-footer border-0">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
+                    <div class="mb-3">
+                        <label for="edit_reason" class="form-label">السبب</label>
+                        <textarea class="form-control"
+                            id="edit_reason"
+                            name="reason"
+                            required
+                            rows="3"
+                            maxlength="255"></textarea>
                     </div>
-                </form>
-            </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <!-- Respond Modal -->
-    <div class="modal fade" id="respondModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="respondForm" method="POST">
-                    @csrf
-                    <div class="modal-header border-0">
-                        <h5 class="modal-title">الرد على الطلب</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" name="response_type" id="response_type">
+<!-- Respond Modal -->
+<div class="modal fade" id="respondModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="respondForm" method="POST">
+                @csrf
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">الرد على الطلب</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="response_type" id="response_type">
 
-                        <div class="mb-3">
-                            <label class="form-label">الحالة</label>
-                            <select class="form-select" id="response_status" name="status" required>
-                                <option value="approved">موافق</option>
-                                <option value="rejected">مرفوض</option>
-                            </select>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">الحالة</label>
+                        <select class="form-select" id="response_status" name="status" required>
+                            <option value="approved">موافق</option>
+                            <option value="rejected">مرفوض</option>
+                        </select>
+                    </div>
 
-                        <div class="mb-3" id="rejection_reason_container" style="display: none;">
-                            <label class="form-label">سبب الرفض</label>
-                            <textarea class="form-control"
-                                id="rejection_reason"
-                                name="rejection_reason"
-                                maxlength="255"></textarea>
-                        </div>
+                    <div class="mb-3" id="rejection_reason_container" style="display: none;">
+                        <label class="form-label">سبب الرفض</label>
+                        <textarea class="form-control"
+                            id="rejection_reason"
+                            name="rejection_reason"
+                            maxlength="255"></textarea>
                     </div>
-                    <div class="modal-footer border-0">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="submit" class="btn btn-primary">حفظ الرد</button>
-                    </div>
-                </form>
-            </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">حفظ الرد</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <!-- Modify Response Modal -->
-    <div class="modal fade" id="modifyResponseModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="modifyResponseForm" method="POST">
-                    @csrf
-                    <input type="hidden" name="response_type" id="modify_response_type">
+<!-- Modify Response Modal -->
+<div class="modal fade" id="modifyResponseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="modifyResponseForm" method="POST">
+                @csrf
+                <input type="hidden" name="response_type" id="modify_response_type">
 
-                    <div class="modal-header border-0">
-                        <h5 class="modal-title">تعديل الرد</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">تعديل الرد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">الحالة</label>
+                        <select class="form-select" id="modify_status" name="status" required>
+                            <option value="approved">موافق</option>
+                            <option value="rejected">مرفوض</option>
+                        </select>
                     </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">الحالة</label>
-                            <select class="form-select" id="modify_status" name="status" required>
-                                <option value="approved">موافق</option>
-                                <option value="rejected">مرفوض</option>
-                            </select>
-                        </div>
 
-                        <div class="mb-3" id="modify_reason_container" style="display: none;">
-                            <label class="form-label">سبب الرفض</label>
-                            <textarea class="form-control"
-                                id="modify_reason"
-                                name="rejection_reason"
-                                maxlength="255"></textarea>
-                        </div>
+                    <div class="mb-3" id="modify_reason_container" style="display: none;">
+                        <label class="form-label">سبب الرفض</label>
+                        <textarea class="form-control"
+                            id="modify_reason"
+                            name="rejection_reason"
+                            maxlength="255"></textarea>
                     </div>
-                    <div class="modal-footer border-0">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
-                    </div>
-                </form>
-            </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">حفظ التغييرات</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 </div>
 
 @push('scripts')
@@ -776,6 +787,70 @@
                 textarea.value = '';
             }
         }
+
+        // إضافة معالج لأزرار حالة العودة
+        document.querySelectorAll('.return-status').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const requestId = this.dataset.requestId;
+                const status = this.value;
+
+                fetch(`/permission-requests/${requestId}/return-status`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            return_status: status
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // يمكنك إضافة إشعار نجاح هنا
+                            console.log('تم تحديث حالة العودة بنجاح');
+                        } else {
+                            // في حالة الخطأ، إعادة تحديث الصفحة
+                            window.location.reload();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        window.location.reload();
+                    });
+            });
+        });
+
+        // إضافة دالة resetStatus
+        window.resetStatus = function(requestId, type) {
+            if (!confirm('هل أنت متأكد من إعادة تعيين الرد؟')) {
+                return;
+            }
+
+            const url = type === 'hr' ?
+                `/permission-requests/${requestId}/reset-hr-status` :
+                `/permission-requests/${requestId}/reset-manager-status`;
+
+            fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        alert('حدث خطأ أثناء إعادة تعيين الرد');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('حدث خطأ أثناء إعادة تعيين الرد');
+                });
+        };
     });
 </script>
 @endpush

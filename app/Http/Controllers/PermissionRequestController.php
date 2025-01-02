@@ -8,14 +8,18 @@ use App\Services\PermissionRequestService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Events\PermissionRequestStatusUpdated;
+use App\Models\Violation;
+use App\Services\NotificationPermissionService;
 
 class PermissionRequestController extends Controller
 {
     protected $permissionRequestService;
+    protected $notificationService;
 
-    public function __construct(PermissionRequestService $permissionRequestService)
+    public function __construct(PermissionRequestService $permissionRequestService, NotificationPermissionService $notificationService)
     {
         $this->permissionRequestService = $permissionRequestService;
+        $this->notificationService = $notificationService;
     }
 
     public function index(Request $request)
@@ -280,19 +284,50 @@ class PermissionRequestController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role !== 'manager') {
-            return redirect()->route('welcome')->with('error', 'Unauthorized action.');
+        // التحقق من الصلاحيات
+        if (!$user->hasRole(['hr', 'team_leader', 'department_manager', 'company_manager'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized action.'
+            ], 403);
         }
 
         $validated = $request->validate([
             'return_status' => 'required|in:0,1,2',
         ]);
 
-        $this->permissionRequestService->updateReturnStatus($permissionRequest, (int)$validated['return_status']);
+        try {
+            $permissionRequest->returned_on_time = (int)$validated['return_status'];
+            $permissionRequest->save();
 
-        return redirect()->route('permission-requests.index')
-            ->with('success', 'Return status updated successfully.');
+            // إذا كان المستخدم متأخراً، قم بإنشاء مخالفة
+            if ($validated['return_status'] == 2) {
+                // إنشاء مخالفة جديدة
+                Violation::create([
+                    'user_id' => $permissionRequest->user_id,
+                    'permission_requests_id' => $permissionRequest->id,
+                    'reason' => 'تأخر في العودة من الاستئذان',
+                    'manager_mistake' => false
+                ]);
+            } else {
+                // إذا تم تغيير الحالة من متأخر إلى حالة أخرى، نقوم بحذف المخالفة إن وجدت
+                Violation::where('permission_requests_id', $permissionRequest->id)->delete();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Return status updated successfully.'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in updateReturnStatus: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while updating the return status.'
+            ], 500);
+        }
     }
+
+
 
     public function updateHrStatus(Request $request, $id)
     {
@@ -316,7 +351,10 @@ class PermissionRequestController extends Controller
                 $request->status === 'rejected' ? $request->rejection_reason : null
             );
 
-            return back()->with('success', 'Response submitted successfully.');
+            // إضافة إشعار تحديث حالة HR
+            $this->notificationService->notifyHRStatusUpdate($permissionRequest);
+
+            return back()->with('success', 'تم تحديث الرد بنجاح');
         } catch (\Exception $e) {
             \Log::error('Error in updateHrStatus: ' . $e->getMessage());
             return back()->with('error', 'An error occurred while updating the status.');
@@ -327,7 +365,6 @@ class PermissionRequestController extends Controller
     {
         $user = Auth::user();
 
-        // التحقق من صلاحيات HR
         if (!$user->hasRole('hr') || !$user->hasPermissionTo('hr_respond_permission_request')) {
             return redirect()->back()->with('error', 'ليس لديك صلاحية تعديل الرد على طلبات الاستئذان');
         }
@@ -339,10 +376,11 @@ class PermissionRequestController extends Controller
 
         $permissionRequest->hr_status = $validated['status'];
         $permissionRequest->hr_rejection_reason = $validated['status'] === 'rejected' ? $validated['rejection_reason'] : null;
-
-        // تحديث الحالة النهائية
         $permissionRequest->updateFinalStatus();
         $permissionRequest->save();
+
+        // إضافة إشعار تعديل رد HR
+        $this->notificationService->notifyHRStatusUpdate($permissionRequest);
 
         return redirect()->back()->with('success', 'تم تعديل الرد بنجاح');
     }
@@ -351,19 +389,24 @@ class PermissionRequestController extends Controller
     {
         $user = Auth::user();
 
-        // التحقق من صلاحيات HR
         if (!$user->hasRole('hr') || !$user->hasPermissionTo('hr_respond_permission_request')) {
             return redirect()->back()->with('error', 'ليس لديك صلاحية إعادة تعيين الرد على طلبات الاستئذان');
         }
 
-        $permissionRequest->hr_status = 'pending';
-        $permissionRequest->hr_rejection_reason = null;
+        try {
+            $permissionRequest->hr_status = 'pending';
+            $permissionRequest->hr_rejection_reason = null;
+            $permissionRequest->updateFinalStatus();
+            $permissionRequest->save();
 
-        // تحديث الحالة النهائية
-        $permissionRequest->updateFinalStatus();
-        $permissionRequest->save();
+            // استخدام دالة إشعار الريست بدلاً من الإشعار العادي
+            $this->notificationService->notifyStatusReset($permissionRequest, 'hr');
 
-        return redirect()->back()->with('success', 'تم إعادة تعيين الرد بنجاح');
+            return redirect()->back()->with('success', 'تم إعادة تعيين الرد بنجاح');
+        } catch (\Exception $e) {
+            \Log::error('Error in resetHrStatus: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'حدث خطأ أثناء إعادة تعيين الرد');
+        }
     }
 
     public function updateManagerStatus(Request $request, $id)
@@ -391,7 +434,10 @@ class PermissionRequestController extends Controller
                 $request->status === 'rejected' ? $request->rejection_reason : null
             );
 
-            return back()->with('success', 'Response submitted successfully.');
+            // إضافة إشعار تحديث حالة المدير
+            $this->notificationService->notifyManagerStatusUpdate($permissionRequest);
+
+            return back()->with('success', 'تم تحديث الرد بنجاح');
         } catch (\Exception $e) {
             \Log::error('Error in updateManagerStatus: ' . $e->getMessage());
             return back()->with('error', 'An error occurred while updating the status.');
@@ -402,27 +448,35 @@ class PermissionRequestController extends Controller
     {
         $user = Auth::user();
 
-        // التحقق من الصلاحيات
         if (
             !$user->hasRole(['team_leader', 'department_manager', 'company_manager']) ||
             !$user->hasPermissionTo('manager_respond_permission_request')
         ) {
-            return back()->with('error', 'Unauthorized action.');
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized action.'
+            ], 403);
         }
 
         try {
-            // إعادة تعيين حالة المدير
             $permissionRequest->manager_status = 'pending';
             $permissionRequest->manager_rejection_reason = null;
-
-            // تحديث الحالة النهائية
             $permissionRequest->updateFinalStatus();
             $permissionRequest->save();
 
-            return back()->with('success', 'Manager response has been reset successfully.');
+            // استخدام دالة إشعار الريست بدلاً من الإشعار العادي
+            $this->notificationService->notifyStatusReset($permissionRequest, 'manager');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إعادة تعيين رد المدير بنجاح'
+            ]);
         } catch (\Exception $e) {
             \Log::error('Error in resetManagerStatus: ' . $e->getMessage());
-            return back()->with('error', 'An error occurred while resetting the status.');
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إعادة تعيين الرد'
+            ], 500);
         }
     }
 
@@ -430,7 +484,6 @@ class PermissionRequestController extends Controller
     {
         $user = Auth::user();
 
-        // التحقق من الصلاحيات
         if (
             !$user->hasRole(['team_leader', 'department_manager', 'company_manager']) ||
             !$user->hasPermissionTo('manager_respond_permission_request')
@@ -444,18 +497,18 @@ class PermissionRequestController extends Controller
         ]);
 
         try {
-            // تحديث حالة المدير
             $permissionRequest->manager_status = $validated['status'];
             $permissionRequest->manager_rejection_reason = $validated['status'] === 'rejected' ? $validated['rejection_reason'] : null;
-
-            // تحديث الحالة النهائية
             $permissionRequest->updateFinalStatus();
             $permissionRequest->save();
 
-            return back()->with('success', 'Manager response has been modified successfully.');
+            // إضافة إشعار تعديل رد المدير
+            $this->notificationService->notifyManagerStatusUpdate($permissionRequest);
+
+            return back()->with('success', 'تم تعديل الرد بنجاح');
         } catch (\Exception $e) {
             \Log::error('Error in modifyManagerStatus: ' . $e->getMessage());
-            return back()->with('error', 'An error occurred while modifying the status.');
+            return back()->with('error', 'حدث خطأ أثناء تعديل الرد');
         }
     }
 }

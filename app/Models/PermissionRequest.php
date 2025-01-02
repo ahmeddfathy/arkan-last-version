@@ -136,8 +136,8 @@ class PermissionRequest extends Model
   // تحديث الحالة النهائية
   public function updateFinalStatus(): void
   {
-    // للموظفين الذين ليس لديهم فريق، نعتمد على رد HR فقط
-    if ($this->user && !$this->user->teams()->exists()) {
+    // للموظفين الذين ليس لديهم فريق أو في فريق HR، نعتمد على رد HR فقط
+    if ($this->user && (!$this->user->teams()->exists() || $this->user->teams()->where('name', 'HR')->exists())) {
       if ($this->hr_status === 'rejected') {
         $this->status = 'rejected';
       } elseif ($this->hr_status === 'approved') {
@@ -146,7 +146,7 @@ class PermissionRequest extends Model
         $this->status = 'pending';
       }
     } else {
-      // للموظفين في الفرق، نحتاج موافقة المدير و HR
+      // للموظفين في الفرق الأخرى، نحتاج موافقة المدير و HR
       if ($this->manager_status === 'rejected' || $this->hr_status === 'rejected') {
         $this->status = 'rejected';
       } elseif ($this->manager_status === 'approved' && $this->hr_status === 'approved') {
